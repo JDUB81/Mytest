@@ -32,6 +32,12 @@ test('unauthenticated users are sent to the login page', async () => {
   }
 });
 
+test('health check answers without signing in', async () => {
+  const res = await request(app).get('/healthz');
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.text, 'ok');
+});
+
 test('bad password is rejected', async () => {
   const agent = request.agent(app);
   const page = await agent.get('/login');

@@ -1,0 +1,10 @@
+services:
+  crm:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"   # put an HTTPS reverse proxy in front of this
+    volumes:
+      - crm-data:/data
+volumes:
+  crm-data:

@@ -88,7 +88,7 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 
 ## Running it for real
 
-Requires Node.js 18 or newer.
+Requires Node.js 22 or newer.
 
 ```bash
 npm install
@@ -104,6 +104,12 @@ the encryption key for Social Security numbers (`.field-key`). **Back up the who
 regularly. **Settings → Download backup** saves the database only; without `.field-key`, SSNs in a
 restored backup can't be read. When you install a new version, the
 database is upgraded automatically on startup.
+
+### Putting it online
+
+To reach the CRM from anywhere, it has to run on a server with HTTPS. Send your hosting
+provider **[HOSTING.md](HOSTING.md)**: it lists exactly what the server needs and how to install,
+run, back up and update it.
 
 ### Settings (environment variables)
 

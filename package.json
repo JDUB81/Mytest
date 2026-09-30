@@ -12,7 +12,7 @@
     "demo": "node scripts/demo.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -87,6 +87,12 @@ function createApp(db, options = {}) {
 
   app.use(csrf);
 
+  // For hosting providers' uptime checks: confirms the app and database respond.
+  app.get('/healthz', (req, res) => {
+    db.prepare('SELECT 1').get();
+    res.type('text').send('ok');
+  });
+
   app.use(require('./routes/auth')(db));
   app.use(requireLogin);
   app.use(require('./routes/dashboard')(db));
