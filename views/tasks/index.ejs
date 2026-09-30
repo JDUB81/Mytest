@@ -1,0 +1,65 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1>Tasks</h1></div>
+
+<div class="grid-side">
+  <div>
+    <div class="tabs tabs-row">
+      <a class="tab <%= view === 'mine' ? 'active' : '' %>" href="/tasks?view=mine">My open tasks</a>
+      <a class="tab <%= view === 'all' ? 'active' : '' %>" href="/tasks?view=all">Everyone's open tasks</a>
+      <a class="tab <%= view === 'done' ? 'active' : '' %>" href="/tasks?view=done">Completed</a>
+    </div>
+    <% if (!tasks.length) { %>
+      <div class="card muted"><%= view === 'done' ? 'No completed tasks yet.' : 'No open tasks. Nice work!' %></div>
+    <% } else { %>
+      <div class="card">
+        <ul class="task-list">
+        <% tasks.forEach(function (t) { %>
+          <li class="<%= t.done_at ? 'done' : (t.due_date && t.due_date < todayStr ? 'overdue' : '') %>">
+            <form method="post" action="/tasks/<%= t.id %>/<%= t.done_at ? 'reopen' : 'done' %>" class="inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="check-btn <%= t.done_at ? 'checked' : '' %>" type="submit" title="<%= t.done_at ? 'Reopen' : 'Mark done' %>">✓</button>
+            </form>
+            <div class="grow">
+              <strong><%= t.title %></strong>
+              <% if (t.details) { %><div class="small notes"><%= t.details %></div><% } %>
+              <div class="small muted">
+                <%= t.done_at ? 'Done ' + formatDate(t.done_at) : (t.due_date ? (t.due_date < todayStr ? 'Overdue — ' : (t.due_date === todayStr ? 'Today — ' : 'Due ')) + formatDate(t.due_date) : 'No due date') %>
+                <% if (t.customer_id) { %> · <a href="/customers/<%= t.customer_id %>"><%= t.first_name %> <%= t.last_name %></a><% } %>
+                <% if (view !== 'mine') { %> · <%= t.assigned_name || 'Unassigned' %><% } %>
+                <% if (t.created_by_name && t.created_by !== t.assigned_to) { %> · from <%= t.created_by_name %><% } %>
+              </div>
+            </div>
+            <% if (t.created_by === user.id || isManager) { %>
+              <form method="post" action="/tasks/<%= t.id %>/delete" class="inline" onsubmit="return confirm('Delete this task?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="link small muted" type="submit">delete</button>
+              </form>
+            <% } %>
+          </li>
+        <% }) %>
+        </ul>
+      </div>
+    <% } %>
+  </div>
+
+  <form method="post" action="/tasks" class="card stack">
+    <h2>New task</h2>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>What needs doing? <input name="title" required></label>
+    <label>Details <textarea name="details" rows="2"></textarea></label>
+    <label>Due <input type="date" name="due_date" value="<%= todayStr %>"></label>
+    <label>Customer (optional)
+      <select name="customer_id">
+        <option value="">None</option>
+        <% customers.forEach(function (c) { %><option value="<%= c.id %>"><%= c.last_name %>, <%= c.first_name %></option><% }) %>
+      </select>
+    </label>
+    <label>Assign to
+      <select name="assigned_to">
+        <% staff.forEach(function (u) { %><option value="<%= u.id %>" <%= u.id === user.id ? 'selected' : '' %>><%= u.full_name %></option><% }) %>
+      </select>
+    </label>
+    <button class="btn primary" type="submit">Add task</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

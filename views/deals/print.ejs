@@ -1,0 +1,66 @@
+<%- include('../partials/print-head', { docTitle: deal.status === 'sold' ? "Buyer's Order" : 'Sales Quote / Buyer’s Order', docNumber: 'Deal #' + deal.id, docDate: formatDate(today()) }) %>
+
+<div class="two">
+  <section>
+    <h3>Buyer</h3>
+    <div><strong><%= deal.first_name %> <%= deal.last_name %></strong></div>
+    <% if (deal.co_buyer_name) { %><div>Co-buyer: <%= deal.co_buyer_name %></div><% } %>
+    <% if (deal.address) { %><div><%= deal.address %></div><% } %>
+    <% if (deal.city || deal.state || deal.zip) { %><div><%= [deal.city, deal.state].filter(Boolean).join(', ') %> <%= deal.zip || '' %></div><% } %>
+    <div><%= [deal.phone, deal.email].filter(Boolean).join(' · ') %></div>
+  </section>
+  <section>
+    <h3>Home</h3>
+    <div><strong><%= home.year || '' %> <%= home.manufacturer %> <%= home.model %></strong></div>
+    <div><%= home.home_type %><%= home.width_ft && home.length_ft ? ', ' + home.width_ft + "' × " + home.length_ft + "'" : '' %><%= home.bedrooms ? ', ' + home.bedrooms + ' bd' : '' %><%= home.bathrooms ? ' / ' + home.bathrooms + ' ba' : '' %><%= home.square_feet ? ', ' + home.square_feet.toLocaleString() + ' sq ft' : '' %></div>
+    <div>Stock #<%= home.stock_number %><%= home.serial_number ? ' · Serial ' + home.serial_number : '' %></div>
+    <% if (deal.salesperson_name) { %><div>Salesperson: <%= deal.salesperson_name %></div><% } %>
+  </section>
+</div>
+
+<table class="lines">
+  <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+  <tbody>
+    <tr><td>Home sale price</td><td class="num"><%= formatMoneyCents(deal.sale_price) %></td></tr>
+    <% if (deal.discount) { %><tr><td>Discount</td><td class="num">−<%= formatMoneyCents(deal.discount) %></td></tr><% } %>
+    <% items.forEach(function (i) { %><tr><td><%= i.description %><%= i.taxable ? '' : ' (non-taxable)' %></td><td class="num"><%= formatMoneyCents(i.price) %></td></tr><% }) %>
+    <% if (deal.doc_fee) { %><tr><td>Documentation fee</td><td class="num"><%= formatMoneyCents(deal.doc_fee) %></td></tr><% } %>
+    <% if (deal.trade_allowance || deal.trade_payoff) { %>
+      <tr><td>Trade-in allowance<%= deal.trade_description ? ': ' + deal.trade_description : '' %></td><td class="num">−<%= formatMoneyCents(deal.trade_allowance) %></td></tr>
+      <% if (deal.trade_payoff) { %><tr><td>Trade-in payoff</td><td class="num"><%= formatMoneyCents(deal.trade_payoff) %></td></tr><% } %>
+    <% } %>
+    <tr><td>Sales tax (<%= deal.tax_rate %>% of <%= formatMoneyCents(totals.taxableBase) %>)</td><td class="num"><%= formatMoneyCents(totals.tax) %></td></tr>
+  </tbody>
+  <tfoot>
+    <tr class="total"><td>Total purchase price</td><td class="num"><%= formatMoneyCents(totals.total) %></td></tr>
+    <% payments.filter(function (p) { return !p.voided_at; }).forEach(function (p) { %>
+      <tr><td><%= PAYMENT_KINDS[p.kind] %> received <%= formatDate(p.received_on) %> (<%= PAYMENT_METHODS[p.method] || p.method %><%= p.reference ? ' ' + p.reference : '' %>)</td>
+        <td class="num"><%= p.kind === 'refund' ? '' : '−' %><%= formatMoneyCents(p.amount) %></td></tr>
+    <% }) %>
+    <tr class="total"><td>Balance due<%= deal.financing_type && deal.financing_type !== 'cash' ? ' / amount to be financed' : '' %></td><td class="num"><%= formatMoneyCents(totals.balance) %></td></tr>
+  </tfoot>
+</table>
+
+<div class="two">
+  <section>
+    <h3>Financing</h3>
+    <div><%= FINANCING_TYPES[deal.financing_type] || 'To be determined' %><%= deal.lender ? ' — ' + deal.lender : '' %></div>
+  </section>
+  <section>
+    <h3>Delivery</h3>
+    <div><%= deal.delivery_date ? formatDate(deal.delivery_date) : 'To be scheduled' %></div>
+    <% if (deal.delivery_address) { %><div><%= deal.delivery_address %></div><% } %>
+  </section>
+</div>
+
+<% if (deal.notes) { %><h3>Notes</h3><p class="notes"><%= deal.notes %></p><% } %>
+<% if (settings.deposit_terms) { %><p class="terms notes"><%= settings.deposit_terms %></p><% } %>
+
+<div class="signatures">
+  <div><div class="line"></div>Buyer — <%= deal.first_name %> <%= deal.last_name %> · Date</div>
+  <% if (deal.co_buyer_name) { %><div><div class="line"></div>Co-buyer — <%= deal.co_buyer_name %> · Date</div><% } %>
+  <div><div class="line"></div>Dealer representative · Date</div>
+</div>
+</div>
+</body>
+</html>

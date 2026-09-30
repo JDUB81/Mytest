@@ -5,13 +5,27 @@
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <fieldset>
     <legend>Contact</legend>
-    <div class="grid-2">
+    <div class="grid-3">
       <label>First name * <input name="first_name" value="<%= customer.first_name || '' %>" required autofocus></label>
       <label>Last name * <input name="last_name" value="<%= customer.last_name || '' %>" required></label>
+      <label>Preferred contact
+        <select name="preferred_contact">
+          <option value="">No preference</option>
+          <% CONTACT_METHODS.forEach(function (m) { %><option <%= customer.preferred_contact === m ? 'selected' : '' %>><%= m %></option><% }) %>
+        </select>
+      </label>
       <label>Phone <input type="tel" name="phone" value="<%= customer.phone || '' %>"></label>
       <label>Email <input type="email" name="email" value="<%= customer.email || '' %>"></label>
     </div>
     <p class="hint">A phone number or email is required.</p>
+  </fieldset>
+  <fieldset>
+    <legend>Co-buyer (optional)</legend>
+    <div class="grid-3">
+      <label>Name <input name="co_buyer_name" value="<%= customer.co_buyer_name || '' %>"></label>
+      <label>Phone <input type="tel" name="co_buyer_phone" value="<%= customer.co_buyer_phone || '' %>"></label>
+      <label>Email <input type="email" name="co_buyer_email" value="<%= customer.co_buyer_email || '' %>"></label>
+    </div>
   </fieldset>
   <fieldset>
     <legend>Address</legend>
@@ -23,9 +37,50 @@
     </div>
   </fieldset>
   <fieldset>
-    <legend>Notes</legend>
-    <label>What are they looking for? Budget, timeline, land, financing…
-      <textarea name="notes" rows="5"><%= customer.notes || '' %></textarea></label>
+    <legend>Lead</legend>
+    <div class="grid-3">
+      <label>Stage
+        <select name="lead_status">
+          <% Object.keys(LEAD_STATUSES).forEach(function (k) { %><option value="<%= k %>" <%= customer.lead_status === k ? 'selected' : '' %>><%= LEAD_STATUSES[k] %></option><% }) %>
+        </select>
+      </label>
+      <label>How did they find us?
+        <select name="lead_source">
+          <option value="">Choose…</option>
+          <% LEAD_SOURCES.forEach(function (s) { %><option <%= customer.lead_source === s ? 'selected' : '' %>><%= s %></option><% }) %>
+        </select>
+      </label>
+      <label>Salesperson
+        <select name="salesperson_id">
+          <option value="">Unassigned</option>
+          <% staff.forEach(function (u) { %><option value="<%= u.id %>" <%= customer.salesperson_id === u.id ? 'selected' : '' %>><%= u.full_name %></option><% }) %>
+        </select>
+      </label>
+      <label>Next follow-up <input type="date" name="follow_up_date" value="<%= customer.follow_up_date || '' %>"></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>What they're looking for</legend>
+    <div class="grid-3">
+      <label>Budget ($) <input name="budget" inputmode="decimal" value="<%= customer.budget ?? '' %>"></label>
+      <label>Bedrooms wanted <input name="desired_bedrooms" inputmode="numeric" value="<%= customer.desired_bedrooms ?? '' %>"></label>
+      <label>Financing
+        <select name="financing_pref">
+          <option value="">Unknown</option>
+          <% Object.keys(FINANCING_TYPES).forEach(function (k) { %><option value="<%= k %>" <%= customer.financing_pref === k ? 'selected' : '' %>><%= FINANCING_TYPES[k] %></option><% }) %>
+        </select>
+      </label>
+      <label>Land
+        <select name="land_status">
+          <option value="">Unknown</option>
+          <% Object.keys(LAND_STATUSES).forEach(function (k) { %><option value="<%= k %>" <%= customer.land_status === k ? 'selected' : '' %>><%= LAND_STATUSES[k] %></option><% }) %>
+        </select>
+      </label>
+      <label>Land location <input name="land_location" value="<%= customer.land_location || '' %>" placeholder="County, address, or park name"></label>
+    </div>
+    <label>Notes — timeline, must-haves, anything else
+      <textarea name="notes" rows="4"><%= customer.notes || '' %></textarea></label>
+    <p class="hint">For conversation history, use the notes timeline on the customer's page instead.</p>
   </fieldset>
   <div class="actions">
     <button class="btn primary" type="submit"><%= customer.id ? 'Save changes' : 'Add customer' %></button>

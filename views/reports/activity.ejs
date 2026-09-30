@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/reports">Reports</a> /</p>
+<h1>Activity log</h1>
+<p class="muted">Everything staff have done in the system, newest first.</p>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>When</th><th>Who</th><th>What</th><th>Related</th></tr></thead>
+    <tbody>
+    <% rows.forEach(function (a) { %>
+      <tr>
+        <td class="small nowrap"><%= formatDateTime(a.created_at) %></td>
+        <td class="small"><%= a.author || '—' %></td>
+        <td><%= a.message %></td>
+        <td class="small">
+          <% if (a.customer_id && a.first_name) { %><a href="/customers/<%= a.customer_id %>"><%= a.first_name %> <%= a.last_name %></a><% } %>
+          <% if (a.inventory_id && a.stock_number) { %> <a href="/inventory/<%= a.inventory_id %>">#<%= a.stock_number %></a><% } %>
+          <% if (a.deal_id) { %> <a href="/deals/<%= a.deal_id %>">deal #<%= a.deal_id %></a><% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<div class="actions">
+  <% if (page > 1) { %><a class="btn" href="/reports/activity?page=<%= page - 1 %>">← Newer</a><% } %>
+  <% if (hasMore) { %><a class="btn" href="/reports/activity?page=<%= page + 1 %>">Older →</a><% } %>
+</div>
+<%- include('../partials/footer') %>

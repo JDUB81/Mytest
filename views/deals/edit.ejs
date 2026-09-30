@@ -1,0 +1,57 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/deals/<%= deal.id %>">Deal #<%= deal.id %></a> /</p>
+<h1>Edit pricing</h1>
+<p class="muted"><%= deal.first_name %> <%= deal.last_name %> · #<%= home.stock_number %> <%= home.manufacturer %> <%= home.model %> · list price <%= formatMoney(home.price) %></p>
+<%- include('../partials/errors', { errors: errors }) %>
+<form method="post" action="/deals/<%= deal.id %>" class="card" id="deal-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <fieldset>
+    <legend>Price</legend>
+    <div class="grid-3">
+      <label>Home sale price ($) <input name="sale_price" inputmode="decimal" value="<%= deal.sale_price %>" data-calc></label>
+      <label>Discount ($) <input name="discount" inputmode="decimal" value="<%= deal.discount %>" data-calc></label>
+      <label>Documentation fee ($) <input name="doc_fee" inputmode="decimal" value="<%= deal.doc_fee %>" data-calc></label>
+      <label>Sales tax rate (%) <input name="tax_rate" inputmode="decimal" value="<%= deal.tax_rate %>" data-calc></label>
+    </div>
+    <p class="hint">Add-ons (delivery, A/C, skirting…) are added on the deal page. Taxable add-ons: <strong data-taxable-items="<%= totals.taxableItems %>"><%= formatMoneyCents(totals.taxableItems) %></strong>, all add-ons: <strong data-items="<%= totals.itemsTotal %>"><%= formatMoneyCents(totals.itemsTotal) %></strong>.</p>
+  </fieldset>
+  <fieldset>
+    <legend>Trade-in</legend>
+    <div class="grid-3">
+      <label>Description <input name="trade_description" value="<%= deal.trade_description || '' %>" placeholder="Year, make, serial"></label>
+      <label>Allowance ($) <input name="trade_allowance" inputmode="decimal" value="<%= deal.trade_allowance %>" data-calc></label>
+      <label>Payoff owed ($) <input name="trade_payoff" inputmode="decimal" value="<%= deal.trade_payoff %>" data-calc></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Financing &amp; delivery</legend>
+    <div class="grid-3">
+      <label>Financing
+        <select name="financing_type">
+          <option value="">Not set</option>
+          <% Object.keys(FINANCING_TYPES).forEach(function (k) { %><option value="<%= k %>" <%= deal.financing_type === k ? 'selected' : '' %>><%= FINANCING_TYPES[k] %></option><% }) %>
+        </select>
+      </label>
+      <label>Lender <input name="lender" value="<%= deal.lender || '' %>"></label>
+      <label>Salesperson
+        <select name="salesperson_id">
+          <% salespeople.forEach(function (u) { %><option value="<%= u.id %>" <%= deal.salesperson_id === u.id ? 'selected' : '' %>><%= u.full_name %></option><% }) %>
+        </select>
+      </label>
+      <label>Delivery date <input type="date" name="delivery_date" value="<%= deal.delivery_date || '' %>"></label>
+    </div>
+    <label>Delivery / site address <input name="delivery_address" value="<%= deal.delivery_address || '' %>"></label>
+    <label>Deal notes (printed on the buyer's order) <textarea name="notes" rows="3"><%= deal.notes || '' %></textarea></label>
+  </fieldset>
+  <div class="calc-preview card">
+    Estimated total: <strong data-out="total"><%= formatMoneyCents(totals.total) %></strong>
+    · tax <span data-out="tax"><%= formatMoneyCents(totals.tax) %></span>
+    · balance after <%= formatMoneyCents(totals.paid) %> paid: <strong data-out="balance" data-paid="<%= totals.paid %>"><%= formatMoneyCents(totals.balance) %></strong>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="submit">Save deal</button>
+    <a href="/deals/<%= deal.id %>">Cancel</a>
+  </div>
+</form>
+<script src="/app.js"></script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · <%= settings.business_name %></title>
+  <link rel="stylesheet" href="/print.css">
+</head>
+<body>
+<div class="no-print toolbar">
+  <button onclick="window.print()">Print</button>
+  <a href="/deals/<%= deal.id %>">Back to deal</a>
+</div>
+<div class="sheet">
+<header class="letterhead">
+  <div>
+    <div class="biz"><%= settings.business_name %></div>
+    <% if (settings.business_address) { %><div class="notes"><%= settings.business_address %></div><% } %>
+    <div><%= [settings.business_phone, settings.business_email].filter(Boolean).join(' · ') %></div>
+  </div>
+  <div class="doc-title">
+    <div class="h"><%= docTitle %></div>
+    <div><%= docNumber %></div>
+    <div><%= docDate %></div>
+  </div>
+</header>

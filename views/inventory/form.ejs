@@ -9,6 +9,7 @@
       <label>Stock number * <input name="stock_number" value="<%= home.stock_number || '' %>" required></label>
       <label>Serial / VIN <input name="serial_number" value="<%= home.serial_number || '' %>"></label>
       <label>Lot location <input name="location" value="<%= home.location || '' %>" placeholder="e.g. Lot 4, Row B"></label>
+      <label>Arrival date <input type="date" name="arrival_date" value="<%= home.arrival_date || '' %>"></label>
     </div>
   </fieldset>
   <fieldset>
@@ -30,14 +31,28 @@
       <label>Square feet <input name="square_feet" inputmode="numeric" value="<%= home.square_feet ?? '' %>"></label>
       <label>Width (ft) <input name="width_ft" inputmode="numeric" value="<%= home.width_ft ?? '' %>"></label>
       <label>Length (ft) <input name="length_ft" inputmode="numeric" value="<%= home.length_ft ?? '' %>"></label>
+      <label>Exterior / colors <input name="exterior_color" value="<%= home.exterior_color || '' %>" placeholder="e.g. Gray siding, white trim"></label>
+    </div>
+    <label>Features &amp; options
+      <textarea name="features" rows="3" placeholder="e.g. Kitchen island, walk-in shower, vaulted ceilings, 2x6 walls…"><%= home.features || '' %></textarea></label>
+  </fieldset>
+  <fieldset>
+    <legend>Pricing</legend>
+    <div class="grid-3">
+      <label>List price ($) <input name="price" inputmode="decimal" value="<%= home.price ?? '' %>"></label>
+    </div>
+    <div class="manager-box">
+      <p class="small muted">Dealer cost — visible to managers only. Used for gross profit on reports.</p>
+      <div class="grid-3">
+        <label>Invoice cost ($) <input name="invoice_cost" inputmode="decimal" value="<%= home.invoice_cost ?? '' %>"></label>
+        <label>Freight ($) <input name="freight_cost" inputmode="decimal" value="<%= home.freight_cost ?? '' %>"></label>
+        <label>Other cost ($) <input name="other_cost" inputmode="decimal" value="<%= home.other_cost ?? '' %>" placeholder="Prep, setup reserve…"></label>
+      </div>
     </div>
   </fieldset>
   <fieldset>
-    <legend>Pricing &amp; notes</legend>
-    <div class="grid-3">
-      <label>Price ($) <input name="price" inputmode="decimal" value="<%= home.price ?? '' %>"></label>
-    </div>
-    <label>Notes <textarea name="notes" rows="4"><%= home.notes || '' %></textarea></label>
+    <legend>Notes</legend>
+    <label>Internal notes <textarea name="notes" rows="3"><%= home.notes || '' %></textarea></label>
   </fieldset>
   <div class="actions">
     <button class="btn primary" type="submit"><%= home.id ? 'Save changes' : 'Add to inventory' %></button>

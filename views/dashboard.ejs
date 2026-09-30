@@ -8,46 +8,60 @@
 </div>
 
 <div class="stats">
-  <a class="stat" href="/inventory?status=available"><span class="num"><%= counts.available %></span><span>Available homes</span></a>
-  <a class="stat" href="/inventory?status=pending"><span class="num"><%= counts.pending %></span><span>Pending sales</span></a>
-  <a class="stat" href="/inventory?status=sold"><span class="num"><%= counts.sold %></span><span>Sold</span></a>
-  <a class="stat" href="/customers"><span class="num"><%= customers %></span><span>Customers</span></a>
+  <a class="stat" href="/inventory?status=available"><span class="num"><%= counts.available %></span><span>Homes available</span></a>
+  <a class="stat" href="/deals?status=pending"><span class="num"><%= counts.pending %></span><span>Pending sales</span></a>
+  <a class="stat" href="/deals?status=sold"><span class="num"><%= month.units %></span><span>Sold this month<%= isManager ? '' : ' (you)' %></span></a>
+  <a class="stat" href="/customers"><span class="num"><%= openCustomers %></span><span>Open leads · <%= month.newLeads %> new this month</span></a>
 </div>
+<% if (isManager) { %>
+<div class="stats">
+  <div class="stat"><span class="num"><%= formatMoney(month.revenue) %></span><span>Sales this month</span></div>
+  <div class="stat"><span class="num"><%= formatMoney(month.grossProfit) %></span><span>Gross profit this month</span></div>
+  <div class="stat"><span class="num"><%= formatMoney(month.collected) %></span><span>Collected this month</span></div>
+  <a class="stat" href="/reports"><span class="num">→</span><span>Full reports</span></a>
+</div>
+<% } %>
 
 <div class="grid-2">
   <section class="card">
-    <h2>Recent assignments</h2>
-    <% if (!assignments.length) { %>
-      <p class="muted">No homes assigned yet. Open an available home and assign it to a customer.</p>
+    <div class="card-head"><h2>My tasks due</h2><a href="/tasks">All tasks</a></div>
+    <% if (!tasks.length) { %>
+      <p class="muted">Nothing due. <a href="/tasks">Add a task</a></p>
     <% } else { %>
-      <table>
-        <thead><tr><th>Stock #</th><th>Home</th><th>Customer</th><th>Status</th></tr></thead>
-        <tbody>
-        <% assignments.forEach(function (a) { %>
-          <tr>
-            <td><a href="/inventory/<%= a.id %>"><%= a.stock_number %></a></td>
-            <td><%= a.manufacturer %> <%= a.model %></td>
-            <td><a href="/customers/<%= a.customer_id %>"><%= a.first_name %> <%= a.last_name %></a></td>
-            <td><span class="status status-<%= a.status %>"><%= statusLabel(a.status) %></span></td>
-          </tr>
-        <% }) %>
-        </tbody>
-      </table>
+      <ul class="task-list">
+      <% tasks.forEach(function (t) { %>
+        <li class="<%= t.due_date && t.due_date < todayStr ? 'overdue' : '' %>">
+          <form method="post" action="/tasks/<%= t.id %>/done" class="inline">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="from" value="dashboard">
+            <button class="check-btn" type="submit" title="Mark done" aria-label="Mark done">✓</button>
+          </form>
+          <div>
+            <strong><%= t.title %></strong>
+            <div class="small muted">
+              <%= t.due_date ? (t.due_date < todayStr ? 'Overdue · ' : 'Due today · ') + formatDate(t.due_date) : 'No due date' %>
+              <% if (t.customer_id) { %> · <a href="/customers/<%= t.customer_id %>"><%= t.first_name %> <%= t.last_name %></a><% } %>
+            </div>
+          </div>
+        </li>
+      <% }) %>
+      </ul>
     <% } %>
   </section>
+
   <section class="card">
-    <h2>Newest customers</h2>
-    <% if (!recentCustomers.length) { %>
-      <p class="muted">No customers yet. <a href="/customers/new">Add the first one.</a></p>
+    <div class="card-head"><h2>Follow-ups due</h2><a href="/customers?follow_up=due&stage=all">See all</a></div>
+    <% if (!followUps.length) { %>
+      <p class="muted">No customer follow-ups due.</p>
     <% } else { %>
       <table>
-        <thead><tr><th>Name</th><th>Phone</th><th>Added</th></tr></thead>
         <tbody>
-        <% recentCustomers.forEach(function (c) { %>
-          <tr>
-            <td><a href="/customers/<%= c.id %>"><%= c.first_name %> <%= c.last_name %></a></td>
-            <td><%= c.phone || '—' %></td>
-            <td><%= formatDate(c.created_at) %></td>
+        <% followUps.forEach(function (c) { %>
+          <tr class="<%= c.follow_up_date < todayStr ? 'overdue' : '' %>">
+            <td><a href="/customers/<%= c.id %>"><strong><%= c.first_name %> <%= c.last_name %></strong></a>
+              <div class="small muted"><%= LEAD_STATUSES[c.lead_status] %><%= c.salesperson_name ? ' · ' + c.salesperson_name : '' %></div></td>
+            <td><% if (c.phone) { %><a href="tel:<%= c.phone %>"><%= c.phone %></a><% } %></td>
+            <td class="num small"><%= formatDate(c.follow_up_date) %></td>
           </tr>
         <% }) %>
         </tbody>
@@ -55,4 +69,30 @@
     <% } %>
   </section>
 </div>
+
+<section class="card">
+  <div class="card-head"><h2><%= isManager ? 'Pending deals' : 'My pending deals' %></h2><a href="/deals">All deals</a></div>
+  <% if (!pending.length) { %>
+    <p class="muted">No pending deals. Assign a home to a customer to start one.</p>
+  <% } else { %>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Customer</th><th>Home</th><th>Salesperson</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
+      <tbody>
+      <% pending.forEach(function (d) { %>
+        <tr>
+          <td><a href="/deals/<%= d.id %>">#<%= d.id %></a></td>
+          <td><a href="/customers/<%= d.customer_id %>"><%= d.first_name %> <%= d.last_name %></a></td>
+          <td>#<%= d.stock_number %> <%= d.manufacturer %> <%= d.model %></td>
+          <td><%= d.salesperson_name || '—' %></td>
+          <td class="num"><%= formatMoney(d.totals.total) %></td>
+          <td class="num"><%= formatMoney(d.totals.paid) %></td>
+          <td class="num"><%= formatMoney(d.totals.balance) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</section>
 <%- include('partials/footer') %>

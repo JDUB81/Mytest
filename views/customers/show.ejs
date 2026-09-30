@@ -2,68 +2,147 @@
 <div class="page-head">
   <div>
     <p class="crumb"><a href="/customers">Customers</a> /</p>
-    <h1><%= customer.first_name %> <%= customer.last_name %></h1>
+    <h1><%= customer.first_name %> <%= customer.last_name %>
+      <span class="stage stage-<%= customer.lead_status %>"><%= LEAD_STATUSES[customer.lead_status] || customer.lead_status %></span></h1>
+    <p class="muted"><%= customer.salesperson_name ? 'Salesperson: ' + customer.salesperson_name : 'No salesperson assigned' %>
+      <%= customer.lead_source ? ' · Source: ' + customer.lead_source : '' %></p>
   </div>
   <div class="actions"><a class="btn" href="/customers/<%= customer.id %>/edit">Edit</a></div>
 </div>
+
+<form method="post" action="/customers/<%= customer.id %>/quick" class="quickbar card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label>Stage
+    <select name="lead_status">
+      <% Object.keys(LEAD_STATUSES).forEach(function (k) { %><option value="<%= k %>" <%= customer.lead_status === k ? 'selected' : '' %>><%= LEAD_STATUSES[k] %></option><% }) %>
+    </select>
+  </label>
+  <label>Next follow-up <input type="date" name="follow_up_date" value="<%= customer.follow_up_date || '' %>"></label>
+  <div class="quick-dates small">
+    <% [[1,'Tomorrow'],[3,'3 days'],[7,'1 week'],[14,'2 weeks']].forEach(function (d) { %>
+      <button class="link" type="button" data-days="<%= d[0] %>"><%= d[1] %></button>
+    <% }) %>
+  </div>
+  <button class="btn" type="submit">Update</button>
+</form>
 
 <div class="grid-2">
   <section class="card">
     <h2>Contact</h2>
     <dl class="details">
-      <dt>Phone</dt><dd><% if (customer.phone) { %><a href="tel:<%= customer.phone %>"><%= customer.phone %></a><% } else { %>—<% } %></dd>
+      <dt>Phone</dt><dd><% if (customer.phone) { %><a href="tel:<%= customer.phone %>"><%= customer.phone %></a> · <a href="sms:<%= customer.phone %>">text</a><% } else { %>—<% } %></dd>
       <dt>Email</dt><dd><% if (customer.email) { %><a href="mailto:<%= customer.email %>"><%= customer.email %></a><% } else { %>—<% } %></dd>
+      <dt>Prefers</dt><dd><%= customer.preferred_contact || '—' %></dd>
       <dt>Address</dt><dd><%= customer.address || '' %><% if (customer.city || customer.state || customer.zip) { %><br><%= [customer.city, customer.state].filter(Boolean).join(', ') %> <%= customer.zip || '' %><% } %><%= !customer.address && !customer.city && !customer.state && !customer.zip ? '—' : '' %></dd>
+      <% if (customer.co_buyer_name) { %>
+        <dt>Co-buyer</dt><dd><%= customer.co_buyer_name %>
+          <% if (customer.co_buyer_phone) { %><br><a href="tel:<%= customer.co_buyer_phone %>"><%= customer.co_buyer_phone %></a><% } %>
+          <% if (customer.co_buyer_email) { %><br><a href="mailto:<%= customer.co_buyer_email %>"><%= customer.co_buyer_email %></a><% } %></dd>
+      <% } %>
       <dt>Added</dt><dd><%= formatDate(customer.created_at) %><%= customer.created_by_name ? ' by ' + customer.created_by_name : '' %></dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Looking for</h2>
+    <dl class="details">
+      <dt>Budget</dt><dd><%= customer.budget ? formatMoney(customer.budget) : '—' %></dd>
+      <dt>Bedrooms</dt><dd><%= customer.desired_bedrooms ?? '—' %></dd>
+      <dt>Financing</dt><dd><%= FINANCING_TYPES[customer.financing_pref] || '—' %></dd>
+      <dt>Land</dt><dd><%= LAND_STATUSES[customer.land_status] || '—' %><%= customer.land_location ? ' — ' + customer.land_location : '' %></dd>
     </dl>
     <% if (customer.notes) { %><h3>Notes</h3><p class="notes"><%= customer.notes %></p><% } %>
   </section>
+</div>
 
-  <section class="card">
-    <h2>Homes</h2>
-    <% if (!homes.length) { %>
-      <p class="muted">No homes assigned yet.</p>
-    <% } else { %>
-      <table>
-        <thead><tr><th>Stock #</th><th>Home</th><th class="num">Price</th><th>Status</th></tr></thead>
-        <tbody>
-        <% homes.forEach(function (h) { %>
-          <tr>
-            <td><a href="/inventory/<%= h.id %>"><%= h.stock_number %></a></td>
-            <td><%= h.year || '' %> <%= h.manufacturer %> <%= h.model %></td>
-            <td class="num"><%= formatMoney(h.price) %></td>
-            <td><span class="status status-<%= h.status %>"><%= statusLabel(h.status) %></span></td>
-          </tr>
+<section class="card">
+  <h2>Homes &amp; deals</h2>
+  <% if (!deals.length) { %>
+    <p class="muted">No homes assigned yet.</p>
+  <% } else { %>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Stock #</th><th>Home</th><th class="num">Sale price</th><th>Status</th><th>Opened</th></tr></thead>
+      <tbody>
+      <% deals.forEach(function (d) { %>
+        <tr>
+          <td><a href="/deals/<%= d.id %>"><strong>#<%= d.id %></strong></a></td>
+          <td><a href="/inventory/<%= d.inventory_id %>"><%= d.stock_number %></a></td>
+          <td><%= d.year || '' %> <%= d.manufacturer %> <%= d.model %></td>
+          <td class="num"><%= formatMoney(d.sale_price - d.discount) %></td>
+          <td><span class="status status-<%= d.status %>"><%= statusLabel(d.status) %></span></td>
+          <td class="small"><%= formatDate(d.created_at) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+
+  <h3>Assign an available home</h3>
+  <% if (!availableHomes.length) { %>
+    <p class="muted">There are no available homes in inventory right now.</p>
+  <% } else { %>
+    <form method="post" action="/inventory/assign" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="customer_id" value="<%= customer.id %>">
+      <input type="hidden" name="from" value="customer">
+      <select name="inventory_id" required>
+        <option value="">Choose a home…</option>
+        <% availableHomes.forEach(function (h) { %>
+          <option value="<%= h.id %>">#<%= h.stock_number %> — <%= h.year || '' %> <%= h.manufacturer %> <%= h.model %><%= h.bedrooms ? ', ' + h.bedrooms + ' bd' : '' %> (<%= formatMoney(h.price) %>)</option>
         <% }) %>
-        </tbody>
-      </table>
-    <% } %>
+      </select>
+      <button class="btn primary" type="submit">Assign &amp; open deal</button>
+    </form>
+  <% } %>
+</section>
 
-    <h3>Assign an available home</h3>
-    <% if (!availableHomes.length) { %>
-      <p class="muted">There are no available homes in inventory right now.</p>
-    <% } else { %>
-      <form method="post" action="/inventory/assign" class="stack">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <input type="hidden" name="customer_id" value="<%= customer.id %>">
-        <input type="hidden" name="from" value="customer">
-        <select name="inventory_id" required>
-          <option value="">Choose a home…</option>
-          <% availableHomes.forEach(function (h) { %>
-            <option value="<%= h.id %>">#<%= h.stock_number %> — <%= h.year || '' %> <%= h.manufacturer %> <%= h.model %> (<%= formatMoney(h.price) %>)</option>
-          <% }) %>
+<div class="grid-2">
+  <section class="card" id="timeline">
+    <h2>Notes &amp; history</h2>
+    <%- include('../partials/note-form', { field: 'customer_id', value: customer.id }) %>
+    <%- include('../partials/timeline', { entries: timeline }) %>
+  </section>
+
+  <section class="card" id="tasks">
+    <h2>Tasks</h2>
+    <form method="post" action="/tasks" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="customer_id" value="<%= customer.id %>">
+      <input type="hidden" name="from" value="customer">
+      <input name="title" placeholder="e.g. Call back about credit app" required>
+      <div class="grid-2 tight">
+        <input type="date" name="due_date" value="<%= today(1) %>" aria-label="Due date">
+        <select name="assigned_to" aria-label="Assigned to">
+          <% staff.forEach(function (u) { %><option value="<%= u.id %>" <%= u.id === user.id ? 'selected' : '' %>><%= u.full_name %></option><% }) %>
         </select>
-        <button class="btn primary" type="submit">Assign home</button>
-      </form>
+      </div>
+      <button class="btn" type="submit">Add task</button>
+    </form>
+    <% if (tasks.length) { %>
+      <ul class="task-list">
+        <% tasks.forEach(function (t) { %>
+          <li class="<%= t.done_at ? 'done' : (t.due_date && t.due_date < today() ? 'overdue' : '') %>">
+            <form method="post" action="/tasks/<%= t.id %>/<%= t.done_at ? 'reopen' : 'done' %>" class="inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="from" value="customer">
+              <button class="check-btn <%= t.done_at ? 'checked' : '' %>" type="submit" title="<%= t.done_at ? 'Reopen' : 'Mark done' %>">✓</button>
+            </form>
+            <div><strong><%= t.title %></strong>
+              <div class="small muted"><%= t.due_date ? formatDate(t.due_date) : 'No due date' %> · <%= t.assigned_name || 'Unassigned' %></div></div>
+          </li>
+        <% }) %>
+      </ul>
     <% } %>
   </section>
 </div>
 
-<% if (isManager && !homes.length) { %>
+<% if (isManager && !deals.length) { %>
   <form method="post" action="/customers/<%= customer.id %>/delete" class="danger-zone"
-        onsubmit="return confirm('Delete this customer? This cannot be undone.')">
+        onsubmit="return confirm('Delete this customer and their notes? This cannot be undone.')">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <button class="btn danger" type="submit">Delete customer</button>
   </form>
 <% } %>
+<script src="/app.js"></script>
 <%- include('../partials/footer') %>

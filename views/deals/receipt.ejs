@@ -1,0 +1,33 @@
+<%- include('../partials/print-head', { docTitle: payment.kind === 'refund' ? 'Refund Receipt' : 'Payment Receipt', docNumber: 'Receipt #' + payment.id, docDate: formatDate(payment.received_on) }) %>
+
+<% if (payment.voided_at) { %><div class="void-stamp">VOID — <%= payment.void_reason %></div><% } %>
+
+<table class="lines receipt">
+  <tbody>
+    <tr><td>Received from</td><td><strong><%= deal.first_name %> <%= deal.last_name %></strong><%= deal.co_buyer_name ? ' & ' + deal.co_buyer_name : '' %></td></tr>
+    <tr><td><%= payment.kind === 'refund' ? 'Amount refunded' : 'Amount received' %></td><td><strong class="big"><%= formatMoneyCents(payment.amount) %></strong></td></tr>
+    <tr><td>Type</td><td><%= PAYMENT_KINDS[payment.kind] %></td></tr>
+    <tr><td>Method</td><td><%= PAYMENT_METHODS[payment.method] || payment.method %><%= payment.reference ? ' — ' + payment.reference : '' %></td></tr>
+    <tr><td>For</td><td><%= home.year || '' %> <%= home.manufacturer %> <%= home.model %>, stock #<%= home.stock_number %> (deal #<%= deal.id %>)</td></tr>
+    <% if (payment.notes) { %><tr><td>Memo</td><td><%= payment.notes %></td></tr><% } %>
+    <tr><td>Received by</td><td><%= payment.received_by_name || '' %></td></tr>
+  </tbody>
+</table>
+
+<table class="lines">
+  <tbody>
+    <tr><td>Total purchase price</td><td class="num"><%= formatMoneyCents(totals.total) %></td></tr>
+    <tr><td>Total paid to date</td><td class="num"><%= formatMoneyCents(totals.paid) %></td></tr>
+    <tr class="total"><td>Remaining balance</td><td class="num"><%= formatMoneyCents(totals.balance) %></td></tr>
+  </tbody>
+</table>
+
+<% if (payment.kind === 'deposit' && settings.deposit_terms) { %><p class="terms notes"><%= settings.deposit_terms %></p><% } %>
+
+<div class="signatures">
+  <div><div class="line"></div>Customer signature</div>
+  <div><div class="line"></div>Received by</div>
+</div>
+</div>
+</body>
+</html>

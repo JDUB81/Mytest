@@ -3,8 +3,9 @@ const bcrypt = require('bcryptjs');
 
 const MIN_PASSWORD_LENGTH = 8;
 
+// BCRYPT_ROUNDS exists so the test suite can use a cheap cost; leave it unset in production.
 function hashPassword(plain) {
-  return bcrypt.hashSync(plain, 12);
+  return bcrypt.hashSync(plain, Number(process.env.BCRYPT_ROUNDS) || 12);
 }
 
 function verifyPassword(plain, hash) {
@@ -69,7 +70,9 @@ function csrf(req, res, next) {
   }
   res.locals.csrfToken = req.session.csrfToken;
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-    const sent = (req.body && req.body._csrf) || req.get('x-csrf-token') || '';
+    // File-upload forms are multipart and not parsed yet, so they carry the token in the URL.
+    const multipart = req.is('multipart/form-data');
+    const sent = (req.body && req.body._csrf) || (multipart && req.query._csrf) || req.get('x-csrf-token') || '';
     const expected = Buffer.from(req.session.csrfToken);
     const actual = Buffer.from(String(sent));
     if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {

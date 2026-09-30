@@ -1,0 +1,185 @@
+<%- include('../partials/header') %>
+<% var canEdit = deal.status === 'pending' || isManager; %>
+<div class="page-head">
+  <div>
+    <p class="crumb"><a href="/deals">Deals</a> /</p>
+    <h1>Deal #<%= deal.id %> <span class="status status-<%= deal.status %>"><%= statusLabel(deal.status) %></span></h1>
+    <p class="muted"><a href="/customers/<%= deal.customer_id %>"><%= deal.first_name %> <%= deal.last_name %></a>
+      · <a href="/inventory/<%= home.id %>">#<%= home.stock_number %> <%= home.year || '' %> <%= home.manufacturer %> <%= home.model %></a>
+      · <%= deal.salesperson_name || 'No salesperson' %></p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/deals/<%= deal.id %>/print" target="_blank" rel="noopener">Print buyer's order</a>
+    <% if (canEdit && deal.status !== 'cancelled') { %><a class="btn primary" href="/deals/<%= deal.id %>/edit">Edit pricing</a><% } %>
+  </div>
+</div>
+
+<% if (deal.status === 'cancelled') { %>
+  <div class="flash flash-error">Cancelled <%= formatDate(deal.cancelled_at) %>: <%= deal.cancel_reason %></div>
+<% } %>
+
+<div class="stats">
+  <div class="stat"><span class="num"><%= formatMoneyCents(totals.total) %></span><span>Total price</span></div>
+  <div class="stat"><span class="num"><%= formatMoneyCents(totals.paid) %></span><span>Paid (<%= formatMoneyCents(totals.deposits) %> in deposits)</span></div>
+  <div class="stat"><span class="num <%= totals.balance > 0 ? '' : 'ok-text' %>"><%= formatMoneyCents(totals.balance) %></span><span>Balance due<%= deal.financing_type && deal.financing_type !== 'cash' ? ' / to finance' : '' %></span></div>
+  <% if (isManager) { %>
+    <div class="stat"><span class="num <%= totals.grossProfit < 0 ? 'overdue-text' : '' %>"><%= formatMoneyCents(totals.grossProfit) %></span><span>Gross profit<%= totals.costKnown ? '' : ' (home cost not entered)' %></span></div>
+  <% } %>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Pricing</h2>
+    <table class="ledger">
+      <tr><td>Home sale price</td><td class="num"><%= formatMoneyCents(deal.sale_price) %></td></tr>
+      <% if (home.price && home.price !== deal.sale_price) { %><tr class="muted small"><td>List price</td><td class="num"><%= formatMoneyCents(home.price) %></td></tr><% } %>
+      <% if (deal.discount) { %><tr><td>Discount</td><td class="num">−<%= formatMoneyCents(deal.discount) %></td></tr><% } %>
+      <% items.forEach(function (i) { %><tr><td><%= i.description %><%= i.taxable ? '' : ' (non-taxable)' %></td><td class="num"><%= formatMoneyCents(i.price) %></td></tr><% }) %>
+      <% if (deal.doc_fee) { %><tr><td>Documentation fee</td><td class="num"><%= formatMoneyCents(deal.doc_fee) %></td></tr><% } %>
+      <% if (deal.trade_allowance || deal.trade_payoff) { %>
+        <tr><td>Trade-in allowance<%= deal.trade_description ? ' — ' + deal.trade_description : '' %></td><td class="num">−<%= formatMoneyCents(deal.trade_allowance) %></td></tr>
+        <% if (deal.trade_payoff) { %><tr><td>Trade-in payoff owed</td><td class="num"><%= formatMoneyCents(deal.trade_payoff) %></td></tr><% } %>
+      <% } %>
+      <tr><td>Sales tax (<%= deal.tax_rate %>% of <%= formatMoneyCents(totals.taxableBase) %>)</td><td class="num"><%= formatMoneyCents(totals.tax) %></td></tr>
+      <tr class="total"><td>Total</td><td class="num"><%= formatMoneyCents(totals.total) %></td></tr>
+      <tr><td>Less payments received</td><td class="num">−<%= formatMoneyCents(totals.paid) %></td></tr>
+      <tr class="total"><td>Balance</td><td class="num"><%= formatMoneyCents(totals.balance) %></td></tr>
+    </table>
+    <dl class="details" style="margin-top:1rem">
+      <dt>Financing</dt><dd><%= FINANCING_TYPES[deal.financing_type] || 'Not set' %><%= deal.lender ? ' — ' + deal.lender : '' %></dd>
+      <dt>Delivery</dt><dd><%= deal.delivery_date ? formatDate(deal.delivery_date) : 'Not scheduled' %><%= deal.delivery_address ? ' — ' + deal.delivery_address : '' %></dd>
+      <% if (deal.sold_at) { %><dt>Sold</dt><dd><%= formatDate(deal.sold_at) %></dd><% } %>
+    </dl>
+    <% if (deal.notes) { %><h3>Deal notes</h3><p class="notes"><%= deal.notes %></p><% } %>
+  </section>
+
+  <section class="card" id="items">
+    <h2>Add-ons &amp; options</h2>
+    <% if (!items.length) { %><p class="muted">No add-ons. Typical: delivery &amp; setup, A/C, skirting, steps, foundation, site prep.</p><% } else { %>
+      <table>
+        <thead><tr><th>Item</th><th class="num">Price</th><% if (isManager) { %><th class="num">Cost</th><% } %><th></th></tr></thead>
+        <tbody>
+        <% items.forEach(function (i) { %>
+          <tr>
+            <td><%= i.description %><% if (!i.taxable) { %> <span class="small muted">non-taxable</span><% } %></td>
+            <td class="num"><%= formatMoneyCents(i.price) %></td>
+            <% if (isManager) { %><td class="num"><%= i.cost == null ? '—' : formatMoneyCents(i.cost) %></td><% } %>
+            <td class="num"><% if (canEdit && deal.status !== 'cancelled') { %>
+              <form method="post" action="/deals/<%= deal.id %>/items/<%= i.id %>/delete" class="inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="link small" type="submit">remove</button>
+              </form><% } %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+    <% if (canEdit && deal.status !== 'cancelled') { %>
+      <form method="post" action="/deals/<%= deal.id %>/items" class="item-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input name="description" list="addon-suggestions" placeholder="Description" required>
+        <datalist id="addon-suggestions">
+          <option>Delivery &amp; setup</option><option>Central A/C</option><option>Heat pump</option><option>Skirting</option>
+          <option>Steps / porch</option><option>Deck</option><option>Foundation</option><option>Site prep</option>
+          <option>Utility hookups</option><option>Septic</option><option>Well</option><option>Gutters</option>
+          <option>Appliance package</option><option>Extended warranty</option><option>Permits</option><option>Title &amp; registration</option>
+        </datalist>
+        <input name="price" inputmode="decimal" placeholder="Price" required class="short">
+        <% if (isManager) { %><input name="cost" inputmode="decimal" placeholder="Cost" class="short"><% } %>
+        <label class="check small"><input type="checkbox" name="taxable" value="1" checked> Taxable</label>
+        <button class="btn" type="submit">Add</button>
+      </form>
+    <% } %>
+  </section>
+</div>
+
+<section class="card" id="payments">
+  <h2>Deposits &amp; payments</h2>
+  <% if (!payments.length) { %><p class="muted">No payments yet.</p><% } else { %>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Receipt</th><th>Date</th><th>Type</th><th>Method</th><th>Reference</th><th>Received by</th><th class="num">Amount</th><th></th></tr></thead>
+      <tbody>
+      <% payments.forEach(function (p) { %>
+        <tr class="<%= p.voided_at ? 'voided' : '' %>">
+          <td><a href="/deals/<%= deal.id %>/payments/<%= p.id %>/receipt" target="_blank" rel="noopener">#<%= p.id %></a></td>
+          <td><%= formatDate(p.received_on) %></td>
+          <td><%= PAYMENT_KINDS[p.kind] %></td>
+          <td><%= PAYMENT_METHODS[p.method] || p.method %></td>
+          <td class="small"><%= p.reference || '' %><%= p.notes ? (p.reference ? ' · ' : '') + p.notes : '' %></td>
+          <td class="small"><%= p.received_by_name || '' %></td>
+          <td class="num"><%= p.kind === 'refund' ? '−' : '' %><%= formatMoneyCents(p.amount) %></td>
+          <td class="small">
+            <% if (p.voided_at) { %>Voided by <%= p.voided_by_name %>: <%= p.void_reason %>
+            <% } else if (isManager) { %>
+              <form method="post" action="/deals/<%= deal.id %>/payments/<%= p.id %>/void" class="inline void-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="hidden" name="reason">
+                <button class="link small" type="submit">void</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+
+  <form method="post" action="/deals/<%= deal.id %>/payments" class="payment-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Type
+      <select name="kind">
+        <% Object.keys(PAYMENT_KINDS).forEach(function (k) { if (k === 'refund' && !isManager) return; if (deal.status === 'cancelled' && k !== 'refund') return; %>
+          <option value="<%= k %>" <%= k === (payments.length ? 'payment' : 'deposit') ? 'selected' : '' %>><%= PAYMENT_KINDS[k] %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Amount ($) <input name="amount" inputmode="decimal" required></label>
+    <label>Method
+      <select name="method">
+        <% Object.keys(PAYMENT_METHODS).forEach(function (k) { %><option value="<%= k %>"><%= PAYMENT_METHODS[k] %></option><% }) %>
+      </select>
+    </label>
+    <label>Date received <input type="date" name="received_on" value="<%= today() %>"></label>
+    <label>Check # / reference <input name="reference"></label>
+    <label>Memo <input name="notes"></label>
+    <% if (deal.status !== 'cancelled' || isManager) { %><button class="btn primary" type="submit">Record</button><% } %>
+  </form>
+</section>
+
+<div class="grid-2">
+  <section class="card" id="notes">
+    <h2>Deal notes</h2>
+    <%- include('../partials/note-form', { field: 'deal_id', value: deal.id }) %>
+    <%- include('../partials/timeline', { entries: notes.map(function (n) { return Object.assign({ type: 'note' }, n); }) }) %>
+  </section>
+  <section class="card">
+    <h2>History</h2>
+    <%- include('../partials/timeline', { entries: activity.map(function (a) { return Object.assign({ type: 'activity' }, a); }) }) %>
+  </section>
+</div>
+
+<% if (isManager) { %>
+<section class="card manager-box">
+  <h2>Manager actions</h2>
+  <div class="actions">
+    <% if (deal.status === 'pending') { %>
+      <form method="post" action="/deals/<%= deal.id %>/sold" class="inline"
+            onsubmit="return confirm('Mark this deal as sold?<%= totals.balance > 0 ? ' There is still a balance due.' : '' %>')">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn primary" type="submit">Mark as sold</button>
+      </form>
+    <% } %>
+    <% if (deal.status !== 'cancelled') { %>
+      <form method="post" action="/deals/<%= deal.id %>/cancel" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input name="reason" placeholder="Reason for cancelling" required>
+        <button class="btn danger" type="submit">Cancel deal &amp; release home</button>
+      </form>
+    <% } %>
+  </div>
+</section>
+<% } %>
+<script src="/app.js"></script>
+<%- include('../partials/footer') %>

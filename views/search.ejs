@@ -1,0 +1,42 @@
+<%- include('partials/header') %>
+<h1>Search</h1>
+<form method="get" action="/search" class="filters">
+  <input type="search" name="q" value="<%= q %>" placeholder="Name, phone, email, stock #, serial, deal #…" autofocus>
+  <button class="btn primary" type="submit">Search</button>
+</form>
+<% if (q) { %>
+  <% if (!results.customers.length && !results.homes.length && !results.deals.length) { %>
+    <div class="card muted">Nothing found for “<%= q %>”.</div>
+  <% } %>
+  <% if (results.customers.length) { %>
+    <section class="card"><h2>Customers</h2>
+      <ul class="plain">
+      <% results.customers.forEach(function (c) { %>
+        <li><a href="/customers/<%= c.id %>"><strong><%= c.first_name %> <%= c.last_name %></strong></a>
+          <span class="small muted"><%= [c.phone, c.email].filter(Boolean).join(' · ') %> · <%= LEAD_STATUSES[c.lead_status] %></span></li>
+      <% }) %>
+      </ul>
+    </section>
+  <% } %>
+  <% if (results.homes.length) { %>
+    <section class="card"><h2>Inventory</h2>
+      <ul class="plain">
+      <% results.homes.forEach(function (h) { %>
+        <li><a href="/inventory/<%= h.id %>"><strong>#<%= h.stock_number %></strong></a> <%= h.year || '' %> <%= h.manufacturer %> <%= h.model %>
+          <span class="status status-<%= h.status %>"><%= statusLabel(h.status) %></span> <span class="small muted"><%= formatMoney(h.price) %></span></li>
+      <% }) %>
+      </ul>
+    </section>
+  <% } %>
+  <% if (results.deals.length) { %>
+    <section class="card"><h2>Deals</h2>
+      <ul class="plain">
+      <% results.deals.forEach(function (d) { %>
+        <li><a href="/deals/<%= d.id %>"><strong>Deal #<%= d.id %></strong></a> — <%= d.first_name %> <%= d.last_name %>, #<%= d.stock_number %>
+          <span class="status status-<%= d.status %>"><%= statusLabel(d.status) %></span></li>
+      <% }) %>
+      </ul>
+    </section>
+  <% } %>
+<% } %>
+<%- include('partials/footer') %>

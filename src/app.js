@@ -3,12 +3,14 @@ const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
 const SqliteStore = require('./sessionStore');
-const { ROLES } = require('./db');
+const db_ = require('./db');
 const { loadUser, requireLogin, csrf } = require('./auth');
-const { formatMoney, formatDate, statusLabel } = require('./format');
+const format = require('./format');
+const { today } = require('./deals');
 
 function createApp(db, options = {}) {
   const app = express();
+  const uploadDir = options.uploadDir || process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
@@ -43,11 +45,34 @@ function createApp(db, options = {}) {
 
   app.use(loadUser(db));
 
+  const tasksDueStmt = db.prepare(
+    'SELECT COUNT(*) AS n FROM tasks WHERE assigned_to = ? AND done_at IS NULL AND due_date IS NOT NULL AND due_date <= ?'
+  );
+
   app.use((req, res, next) => {
-    res.locals.ROLES = ROLES;
-    res.locals.formatMoney = formatMoney;
-    res.locals.formatDate = formatDate;
-    res.locals.statusLabel = statusLabel;
+    Object.assign(res.locals, {
+      formatMoney: format.formatMoney,
+      formatMoneyCents: format.formatMoneyCents,
+      formatDate: format.formatDate,
+      formatDateTime: format.formatDateTime,
+      daysSince: format.daysSince,
+      statusLabel: format.statusLabel,
+      today,
+      ROLES: db_.ROLES,
+      LEAD_STATUSES: db_.LEAD_STATUSES,
+      LEAD_SOURCES: db_.LEAD_SOURCES,
+      LAND_STATUSES: db_.LAND_STATUSES,
+      FINANCING_TYPES: db_.FINANCING_TYPES,
+      PAYMENT_KINDS: db_.PAYMENT_KINDS,
+      PAYMENT_METHODS: db_.PAYMENT_METHODS,
+      NOTE_KINDS: db_.NOTE_KINDS,
+      HOME_TYPES: db_.HOME_TYPES,
+      settings: db_.getSettings(db),
+    });
+    req.flash = (type, message, link = null) => {
+      req.session.flash = { type, message, link };
+    };
+    res.locals.tasksDue = req.user ? tasksDueStmt.get(req.user.id, today()).n : 0;
     res.locals.currentPath = req.path;
     res.locals.flash = req.session.flash || null;
     delete req.session.flash;
@@ -59,9 +84,16 @@ function createApp(db, options = {}) {
   app.use(require('./routes/auth')(db));
   app.use(requireLogin);
   app.use(require('./routes/dashboard')(db));
-  app.use('/inventory', require('./routes/inventory')(db));
+  app.use('/inventory', require('./routes/inventory')(db, { uploadDir }));
+  app.use('/photos', require('./routes/photos')(db, { uploadDir }));
   app.use('/customers', require('./routes/customers')(db));
   app.use('/users', require('./routes/users')(db));
+  app.use('/deals', require('./routes/deals')(db));
+  app.use('/notes', require('./routes/notes')(db));
+  app.use('/tasks', require('./routes/tasks')(db));
+  app.use('/reports', require('./routes/reports')(db));
+  app.use('/settings', require('./routes/settings')(db));
+  app.use(require('./routes/search')(db));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Not found', message: 'That page does not exist.' });

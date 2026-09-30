@@ -1,0 +1,174 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Reports</h1>
+  <div class="actions"><a class="btn" href="/reports/activity">Activity log</a></div>
+</div>
+
+<form method="get" action="/reports" class="filters card">
+  <div class="tabs">
+    <% [['this_month','This month'],['last_month','Last month'],['ytd','Year to date'],['last_12','Last 12 months']].forEach(function (p) { %>
+      <a class="tab <%= preset === p[0] ? 'active' : '' %>" href="/reports?preset=<%= p[0] %>"><%= p[1] %></a>
+    <% }) %>
+  </div>
+  <label class="inline-label">From <input type="date" name="from" value="<%= from %>"></label>
+  <label class="inline-label">To <input type="date" name="to" value="<%= to %>"></label>
+  <button class="btn" type="submit">Apply</button>
+</form>
+
+<div class="stats">
+  <div class="stat"><span class="num"><%= summary.units %></span><span>Homes sold</span></div>
+  <div class="stat"><span class="num"><%= formatMoney(summary.revenue) %></span><span>Sales (before tax)</span></div>
+  <div class="stat"><span class="num"><%= formatMoney(summary.grossProfit) %></span><span>Gross profit<%= summary.units ? ' · avg ' + formatMoney(summary.grossProfit / summary.units) : '' %></span></div>
+  <div class="stat"><span class="num"><%= summary.avgDaysToSell === null ? '—' : summary.avgDaysToSell + 'd' %></span><span>Avg days on lot before sale</span></div>
+</div>
+<% if (summary.missingCost) { %><p class="flash flash-error small"><%= summary.missingCost %> sold home<%= summary.missingCost === 1 ? ' is' : 's are' %> missing a dealer cost, so gross profit is overstated. Enter invoice cost on the inventory item.</p><% } %>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>By salesperson</h2>
+    <% if (!bySalesperson.length) { %><p class="muted">No sales in this period.</p><% } else { %>
+    <table>
+      <thead><tr><th>Salesperson</th><th class="num">Units</th><th class="num">Sales</th><th class="num">Gross</th><th class="num">Commission<%= commissionPct ? ' (' + commissionPct + '%)' : '' %></th></tr></thead>
+      <tbody>
+      <% bySalesperson.forEach(function (r) { %>
+        <tr><td><%= r.name %></td><td class="num"><%= r.units %></td><td class="num"><%= formatMoney(r.revenue) %></td><td class="num"><%= formatMoney(r.grossProfit) %></td><td class="num"><%= commissionPct ? formatMoneyCents(r.commission) : '—' %></td></tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% if (!commissionPct) { %><p class="hint">Set a commission percentage in <a href="/settings">Settings</a> to calculate commissions.</p><% } %>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <h2>Money collected</h2>
+    <% if (!payments.length) { %><p class="muted">No payments in this period.</p><% } else { %>
+    <table>
+      <thead><tr><th>Type</th><th>Method</th><th class="num">Count</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+      <% payments.forEach(function (p) { %>
+        <tr><td><%= PAYMENT_KINDS[p.kind] %></td><td><%= PAYMENT_METHODS[p.method] || p.method %></td><td class="num"><%= p.n %></td><td class="num"><%= p.kind === 'refund' ? '−' : '' %><%= formatMoneyCents(p.total) %></td></tr>
+      <% }) %>
+      <tr class="total"><td colspan="3">Net collected</td><td class="num"><%= formatMoneyCents(paymentsNet) %></td></tr>
+      </tbody>
+    </table>
+    <% } %>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Last 12 months</h2>
+  <% var maxRev = Math.max.apply(null, monthly.map(function (m) { return m.revenue; }).concat([1])); %>
+  <div class="table-wrap">
+  <table class="bars">
+    <thead><tr><th>Month</th><th class="num">Units</th><th class="num">Sales</th><th class="num">Gross</th><th class="bar-col"></th></tr></thead>
+    <tbody>
+    <% monthly.forEach(function (m) { var parts = m.month.split('-'); %>
+      <tr>
+        <td><%= new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) %></td>
+        <td class="num"><%= m.units %></td>
+        <td class="num"><%= formatMoney(m.revenue) %></td>
+        <td class="num"><%= formatMoney(m.grossProfit) %></td>
+        <td class="bar-col"><span class="bar" style="width: <%= Math.round(m.revenue / maxRev * 100) %>%"></span></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Lead sources</h2>
+    <p class="hint">Customers added in this period and how many have bought.</p>
+    <% if (!leadSources.length) { %><p class="muted">No new customers in this period.</p><% } else { %>
+    <table>
+      <thead><tr><th>Source</th><th class="num">Leads</th><th class="num">Bought</th><th class="num">Close rate</th></tr></thead>
+      <tbody>
+      <% leadSources.forEach(function (s) { %>
+        <tr><td><%= s.source %></td><td class="num"><%= s.leads %></td><td class="num"><%= s.closed %></td><td class="num"><%= Math.round(s.closed / s.leads * 100) %>%</td></tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <h2>Pipeline right now</h2>
+    <dl class="details">
+      <dt>Pending deals</dt><dd><%= pipeline.count %> worth <%= formatMoney(pipeline.value) %></dd>
+      <dt>Deposits held</dt><dd><%= formatMoney(pipeline.deposits) %></dd>
+    </dl>
+    <h3>Customers by stage</h3>
+    <table>
+      <tbody>
+      <% Object.keys(LEAD_STATUSES).forEach(function (k) { var row = stageCounts.find(function (s) { return s.lead_status === k; }); %>
+        <tr><td><a href="/customers?stage=<%= k %>"><%= LEAD_STATUSES[k] %></a></td><td class="num"><%= row ? row.n : 0 %></td></tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% if (Object.keys(byFinancing).length) { %>
+      <h3>Sold by financing type</h3>
+      <table><tbody>
+        <% Object.keys(byFinancing).forEach(function (k) { %><tr><td><%= k %></td><td class="num"><%= byFinancing[k] %></td></tr><% }) %>
+      </tbody></table>
+    <% } %>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Inventory aging (available homes)</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Days on lot</th><th class="num">Homes</th><th class="num">List value</th><th class="num">Dealer cost</th></tr></thead>
+    <tbody>
+    <% aging.forEach(function (b) { %>
+      <tr class="<%= b.min > 90 && b.count ? 'overdue' : '' %>"><td><%= b.label %></td><td class="num"><%= b.count %></td><td class="num"><%= formatMoney(b.listValue) %></td><td class="num"><%= formatMoney(b.cost) %></td></tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+  <% if (stale.length) { %>
+    <h3>On the lot over 90 days</h3>
+    <ul class="plain">
+      <% stale.forEach(function (h) { %><li><a href="/inventory/<%= h.id %>">#<%= h.stock_number %></a> <%= h.year || '' %> <%= h.manufacturer %> <%= h.model %> — <%= h.days %> days, <%= formatMoney(h.price) %></li><% }) %>
+    </ul>
+  <% } %>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Homes sold in this period</h2>
+    <a href="/reports/export/sales.csv?from=<%= from %>&to=<%= to %>">Download CSV</a></div>
+  <% if (!sold.length) { %><p class="muted">None.</p><% } else { %>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Sold</th><th>Deal</th><th>Customer</th><th>Home</th><th>Salesperson</th><th class="num">Sale</th><th class="num">Cost</th><th class="num">Gross</th></tr></thead>
+    <tbody>
+    <% sold.forEach(function (d) { %>
+      <tr>
+        <td class="small"><%= formatDate(d.sold_at) %></td>
+        <td><a href="/deals/<%= d.id %>">#<%= d.id %></a></td>
+        <td><%= d.first_name %> <%= d.last_name %></td>
+        <td>#<%= d.stock_number %> <%= d.manufacturer %> <%= d.model %></td>
+        <td class="small"><%= d.salesperson_name || '—' %></td>
+        <td class="num"><%= formatMoney(d.totals.homeNet + d.totals.itemsTotal + d.doc_fee) %></td>
+        <td class="num"><%= d.totals.costKnown ? formatMoney(d.totals.homeCost + d.totals.itemsCost) : '—' %></td>
+        <td class="num"><%= formatMoney(d.totals.grossProfit) %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>Exports</h2>
+  <p>Download spreadsheets (open in Excel or Google Sheets):</p>
+  <div class="actions">
+    <a class="btn" href="/reports/export/customers.csv">All customers</a>
+    <a class="btn" href="/reports/export/inventory.csv">All inventory (with costs)</a>
+    <a class="btn" href="/reports/export/sales.csv?from=<%= from %>&to=<%= to %>">Sales in this period</a>
+    <a class="btn" href="/reports/export/payments.csv?from=<%= from %>&to=<%= to %>">Payments in this period</a>
+  </div>
+</section>
+<%- include('../partials/footer') %>

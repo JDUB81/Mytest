@@ -1,0 +1,46 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Deals</h1>
+  <% if (isManager) { %><div class="actions"><a class="btn" href="/reports">Sales reports</a></div><% } %>
+</div>
+
+<div class="filters">
+  <div class="tabs">
+    <% [['pending','Pending'],['sold','Sold'],['cancelled','Cancelled'],['all','All']].forEach(function (t) { %>
+      <a class="tab <%= status === t[0] ? 'active' : '' %>" href="/deals?status=<%= t[0] %><%= mine ? '&mine=1' : '' %>"><%= t[1] %></a>
+    <% }) %>
+  </div>
+  <div class="tabs">
+    <a class="tab <%= !mine ? 'active' : '' %>" href="/deals?status=<%= status %>">Everyone</a>
+    <a class="tab <%= mine ? 'active' : '' %>" href="/deals?status=<%= status %>&mine=1">Mine</a>
+  </div>
+</div>
+
+<% if (!deals.length) { %>
+  <div class="card muted">No deals here. Deals start when a home is assigned to a customer.</div>
+<% } else { %>
+  <% var sum = function (f) { return deals.reduce(function (s, d) { return s + f(d); }, 0); }; %>
+  <p class="muted small"><%= deals.length %> deal<%= deals.length === 1 ? '' : 's' %> · <%= formatMoney(sum(function (d) { return d.totals.total; })) %> total · <%= formatMoney(sum(function (d) { return d.totals.paid; })) %> collected<% if (isManager) { %> · <%= formatMoney(sum(function (d) { return d.totals.grossProfit; })) %> gross profit<% } %></p>
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>Deal</th><th>Customer</th><th>Home</th><th>Salesperson</th><th>Financing</th><th>Status</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><% if (isManager) { %><th class="num">Gross</th><% } %></tr></thead>
+      <tbody>
+      <% deals.forEach(function (d) { %>
+        <tr>
+          <td><a href="/deals/<%= d.id %>"><strong>#<%= d.id %></strong></a><div class="small muted"><%= formatDate(d.sold_at || d.created_at) %></div></td>
+          <td><a href="/customers/<%= d.customer_id %>"><%= d.first_name %> <%= d.last_name %></a></td>
+          <td><a href="/inventory/<%= d.inventory_id %>">#<%= d.stock_number %></a> <span class="small"><%= d.manufacturer %> <%= d.model %></span></td>
+          <td class="small"><%= d.salesperson_name || '—' %></td>
+          <td class="small"><%= FINANCING_TYPES[d.financing_type] || '—' %></td>
+          <td><span class="status status-<%= d.status %>"><%= statusLabel(d.status) %></span></td>
+          <td class="num"><%= formatMoney(d.totals.total) %></td>
+          <td class="num"><%= formatMoney(d.totals.paid) %></td>
+          <td class="num <%= d.totals.balance > 0 && d.status === 'sold' ? 'overdue-text' : '' %>"><%= formatMoney(d.totals.balance) %></td>
+          <% if (isManager) { %><td class="num <%= d.totals.costKnown ? '' : 'muted' %>" title="<%= d.totals.costKnown ? '' : 'Home cost not entered' %>"><%= formatMoney(d.totals.grossProfit) %></td><% } %>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/footer') %>

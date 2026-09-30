@@ -1,0 +1,30 @@
+<%# Params: entries — notes ({type:'note', kind, body, author, user_id}) and/or activity ({type:'activity', message}) %>
+<% if (!entries.length) { %>
+  <p class="muted">Nothing here yet.</p>
+<% } else { %>
+<ol class="timeline">
+  <% entries.forEach(function (e) { %>
+    <% if (e.type === 'activity') { %>
+      <li class="tl-activity">
+        <div class="tl-meta"><%= formatDateTime(e.created_at) %><%= e.author ? ' · ' + e.author : '' %></div>
+        <div><%= e.message %><% if (e.deal_id && currentPath.indexOf('/deals/') !== 0) { %> · <a href="/deals/<%= e.deal_id %>">deal #<%= e.deal_id %></a><% } %></div>
+      </li>
+    <% } else { %>
+      <li class="tl-note tl-<%= e.kind %>">
+        <div class="tl-meta">
+          <span class="note-kind"><%= NOTE_KINDS[e.kind] || 'Note' %></span>
+          <%= formatDateTime(e.created_at) %><%= e.author ? ' · ' + e.author : '' %>
+          <% if (e.deal_id && currentPath.indexOf('/deals/') !== 0) { %> · <a href="/deals/<%= e.deal_id %>">deal #<%= e.deal_id %></a><% } %>
+          <% if (e.user_id === user.id || isManager) { %>
+            <form method="post" action="/notes/<%= e.id %>/delete" class="inline" onsubmit="return confirm('Delete this note?')">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="link small muted" type="submit">delete</button>
+            </form>
+          <% } %>
+        </div>
+        <div class="notes"><%= e.body %></div>
+      </li>
+    <% } %>
+  <% }) %>
+</ol>
+<% } %>

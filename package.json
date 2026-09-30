@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "create-user": "node scripts/create-user.js",
-    "test": "node --test"
+    "test": "BCRYPT_ROUNDS=4 node --test"
   },
   "engines": {
     "node": ">=18"
@@ -17,7 +17,8 @@
     "better-sqlite3": "^13.0.3",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
-    "express-session": "^1.19.0"
+    "express-session": "^1.19.0",
+    "multer": "^2.4.0"
   },
   "devDependencies": {
     "supertest": "^7.3.0"

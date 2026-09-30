@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<h1>Settings</h1>
+<%- include('partials/errors', { errors: errors }) %>
+<form method="post" action="/settings" class="card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <fieldset>
+    <legend>Business (printed on buyer's orders and receipts)</legend>
+    <div class="grid-2">
+      <label>Business name <input name="business_name" value="<%= values.business_name %>" required></label>
+      <label>Phone <input name="business_phone" value="<%= values.business_phone %>"></label>
+      <label>Email <input name="business_email" value="<%= values.business_email %>"></label>
+    </div>
+    <label>Address <textarea name="business_address" rows="2"><%= values.business_address %></textarea></label>
+  </fieldset>
+  <fieldset>
+    <legend>Deal defaults</legend>
+    <div class="grid-3">
+      <label>Default sales tax rate (%) <input name="default_tax_rate" inputmode="decimal" value="<%= values.default_tax_rate %>"></label>
+      <label>Default documentation fee ($) <input name="default_doc_fee" inputmode="decimal" value="<%= values.default_doc_fee %>"></label>
+      <label>Commission (% of gross profit) <input name="commission_percent" inputmode="decimal" value="<%= values.commission_percent %>"></label>
+    </div>
+    <p class="hint">Defaults apply to new deals; existing deals keep their own numbers. Tax rules for manufactured homes vary by state — confirm your rate with your accountant.</p>
+    <label>Deposit / purchase terms (printed on buyer's orders and deposit receipts)
+      <textarea name="deposit_terms" rows="3"><%= values.deposit_terms %></textarea></label>
+  </fieldset>
+  <div class="actions"><button class="btn primary" type="submit">Save settings</button></div>
+</form>
+<%- include('partials/footer') %>

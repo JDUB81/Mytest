@@ -1,33 +1,59 @@
 <%- include('../partials/header') %>
 <div class="page-head">
   <h1>Inventory</h1>
-  <% if (isManager) { %><a class="btn primary" href="/inventory/new">+ Add inventory</a><% } %>
+  <div class="actions">
+    <% if (isManager) { %>
+      <a class="btn" href="/reports/export/inventory.csv">Export CSV</a>
+      <a class="btn primary" href="/inventory/new">+ Add inventory</a>
+    <% } %>
+  </div>
+</div>
+
+<% const qs = function (over) { var p = Object.assign({ status: status }, filters, over); return Object.keys(p).filter(function (k) { return p[k] !== '' && p[k] !== undefined; }).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&'); }; %>
+<div class="tabs tabs-row">
+  <% [['available','Available'],['pending','Pending'],['sold','Sold'],['all','All']].forEach(function (t) { %>
+    <a class="tab <%= status === t[0] ? 'active' : '' %>" href="/inventory?<%= qs({ status: t[0] }) %>"><%= t[1] %></a>
+  <% }) %>
 </div>
 
 <form method="get" action="/inventory" class="filters">
-  <div class="tabs">
-    <% [['available','Available'],['pending','Pending'],['sold','Sold'],['all','All']].forEach(function (t) { %>
-      <a class="tab <%= status === t[0] ? 'active' : '' %>" href="/inventory?status=<%= t[0] %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= t[1] %></a>
-    <% }) %>
-  </div>
   <input type="hidden" name="status" value="<%= status %>">
-  <input type="search" name="q" value="<%= q %>" placeholder="Search stock #, make, model, serial…">
-  <button class="btn" type="submit">Search</button>
+  <input type="search" name="q" value="<%= filters.q %>" placeholder="Search stock #, make, model, serial, features…">
+  <select name="type" aria-label="Home type">
+    <option value="">Any type</option>
+    <% HOME_TYPES.forEach(function (t) { %><option <%= filters.type === t ? 'selected' : '' %>><%= t %></option><% }) %>
+  </select>
+  <select name="beds" aria-label="Bedrooms">
+    <option value="">Any beds</option>
+    <% [1,2,3,4,5].forEach(function (b) { %><option value="<%= b %>" <%= Number(filters.beds) === b ? 'selected' : '' %>><%= b %>+ beds</option><% }) %>
+  </select>
+  <input type="text" name="max_price" value="<%= filters.max_price %>" placeholder="Max price" inputmode="numeric" class="short">
+  <select name="sort" aria-label="Sort">
+    <option value="newest" <%= filters.sort === 'newest' ? 'selected' : '' %>>Newest first</option>
+    <option value="oldest" <%= filters.sort === 'oldest' ? 'selected' : '' %>>Longest on lot</option>
+    <option value="price_low" <%= filters.sort === 'price_low' ? 'selected' : '' %>>Price: low to high</option>
+    <option value="price_high" <%= filters.sort === 'price_high' ? 'selected' : '' %>>Price: high to low</option>
+    <option value="stock" <%= filters.sort === 'stock' ? 'selected' : '' %>>Stock #</option>
+  </select>
+  <button class="btn" type="submit">Filter</button>
+  <% if (filters.q || filters.type || filters.beds || filters.max_price) { %><a href="/inventory?status=<%= status %>">Clear</a><% } %>
 </form>
 
 <% if (!homes.length) { %>
   <div class="card muted">No homes match.
-    <% if (isManager && status === 'available' && !q) { %><a href="/inventory/new">Add your first home.</a><% } %>
+    <% if (isManager && status === 'available' && !filters.q) { %><a href="/inventory/new">Add a home.</a><% } %>
   </div>
 <% } else { %>
+  <p class="muted small"><%= homes.length %> home<%= homes.length === 1 ? '' : 's' %> · <%= formatMoney(totalValue) %> total list value</p>
   <div class="card table-wrap">
     <table>
       <thead>
-        <tr><th>Stock #</th><th>Year / Make / Model</th><th>Type</th><th>Bed / Bath</th><th>Sq ft</th><th class="num">Price</th><th>Status</th><th>Customer</th></tr>
+        <tr><th></th><th>Stock #</th><th>Year / Make / Model</th><th>Type</th><th>Bed / Bath</th><th>Sq ft</th><th class="num">Price</th><th>Status</th><th>On lot</th><th>Customer</th></tr>
       </thead>
       <tbody>
       <% homes.forEach(function (h) { %>
         <tr>
+          <td class="thumb-cell"><% if (h.photo_id) { %><a href="/inventory/<%= h.id %>"><img class="thumb" src="/photos/<%= h.photo_id %>" alt="" loading="lazy"></a><% } else { %><span class="thumb thumb-empty"></span><% } %></td>
           <td><a href="/inventory/<%= h.id %>"><strong><%= h.stock_number %></strong></a></td>
           <td><%= h.year || '' %> <%= h.manufacturer %> <%= h.model %></td>
           <td><%= h.home_type %></td>
@@ -35,6 +61,7 @@
           <td><%= h.square_feet ? h.square_feet.toLocaleString() : '—' %></td>
           <td class="num"><%= formatMoney(h.price) %></td>
           <td><span class="status status-<%= h.status %>"><%= statusLabel(h.status) %></span></td>
+          <td class="small"><% var days = daysSince(h.arrival_date || h.created_at); %><% if (h.status === 'available' && days !== null) { %><span class="<%= days > 90 ? 'aging' : '' %>"><%= days %>d</span><% } else { %>—<% } %></td>
           <td><% if (h.customer_id) { %><a href="/customers/<%= h.customer_id %>"><%= h.first_name %> <%= h.last_name %></a><% } else if (h.status === 'available') { %><a href="/inventory/<%= h.id %>#assign">Assign…</a><% } %></td>
         </tr>
       <% }) %>

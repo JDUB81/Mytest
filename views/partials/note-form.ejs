@@ -1,0 +1,12 @@
+<%# Params: field ('customer_id' | 'inventory_id' | 'deal_id'), value %>
+<form method="post" action="/notes" class="note-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="<%= field %>" value="<%= value %>">
+  <textarea name="body" rows="3" placeholder="Add a note — what was discussed, next steps…" required></textarea>
+  <div class="note-form-row">
+    <select name="kind" aria-label="Note type">
+      <% Object.keys(NOTE_KINDS).forEach(function (k) { %><option value="<%= k %>"><%= NOTE_KINDS[k] %></option><% }) %>
+    </select>
+    <button class="btn primary" type="submit">Save note</button>
+  </div>
+</form>
