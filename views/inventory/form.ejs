@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<h1><%= title %></h1>
+<%- include('../partials/errors', { errors: errors }) %>
+<form method="post" action="<%= home.id ? '/inventory/' + home.id : '/inventory' %>" class="card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <fieldset>
+    <legend>Identification</legend>
+    <div class="grid-3">
+      <label>Stock number * <input name="stock_number" value="<%= home.stock_number || '' %>" required></label>
+      <label>Serial / VIN <input name="serial_number" value="<%= home.serial_number || '' %>"></label>
+      <label>Lot location <input name="location" value="<%= home.location || '' %>" placeholder="e.g. Lot 4, Row B"></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Home</legend>
+    <div class="grid-3">
+      <label>Manufacturer * <input name="manufacturer" value="<%= home.manufacturer || '' %>" required></label>
+      <label>Model * <input name="model" value="<%= home.model || '' %>" required></label>
+      <label>Year <input name="year" inputmode="numeric" value="<%= home.year ?? '' %>"></label>
+      <label>Home type *
+        <select name="home_type" required>
+          <option value="">Choose…</option>
+          <% HOME_TYPES.forEach(function (t) { %>
+            <option value="<%= t %>" <%= home.home_type === t ? 'selected' : '' %>><%= t %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Bedrooms <input name="bedrooms" inputmode="numeric" value="<%= home.bedrooms ?? '' %>"></label>
+      <label>Bathrooms <input name="bathrooms" inputmode="decimal" value="<%= home.bathrooms ?? '' %>"></label>
+      <label>Square feet <input name="square_feet" inputmode="numeric" value="<%= home.square_feet ?? '' %>"></label>
+      <label>Width (ft) <input name="width_ft" inputmode="numeric" value="<%= home.width_ft ?? '' %>"></label>
+      <label>Length (ft) <input name="length_ft" inputmode="numeric" value="<%= home.length_ft ?? '' %>"></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Pricing &amp; notes</legend>
+    <div class="grid-3">
+      <label>Price ($) <input name="price" inputmode="decimal" value="<%= home.price ?? '' %>"></label>
+    </div>
+    <label>Notes <textarea name="notes" rows="4"><%= home.notes || '' %></textarea></label>
+  </fieldset>
+  <div class="actions">
+    <button class="btn primary" type="submit"><%= home.id ? 'Save changes' : 'Add to inventory' %></button>
+    <a href="<%= home.id ? '/inventory/' + home.id : '/inventory' %>">Cancel</a>
+  </div>
+</form>
+<%- include('../partials/footer') %>

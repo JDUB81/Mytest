@@ -1,0 +1,58 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <h1>Welcome, <%= user.full_name.split(' ')[0] %></h1>
+  <div class="actions">
+    <a class="btn primary" href="/customers/new">+ New customer</a>
+    <% if (isManager) { %><a class="btn" href="/inventory/new">+ Add inventory</a><% } %>
+  </div>
+</div>
+
+<div class="stats">
+  <a class="stat" href="/inventory?status=available"><span class="num"><%= counts.available %></span><span>Available homes</span></a>
+  <a class="stat" href="/inventory?status=pending"><span class="num"><%= counts.pending %></span><span>Pending sales</span></a>
+  <a class="stat" href="/inventory?status=sold"><span class="num"><%= counts.sold %></span><span>Sold</span></a>
+  <a class="stat" href="/customers"><span class="num"><%= customers %></span><span>Customers</span></a>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Recent assignments</h2>
+    <% if (!assignments.length) { %>
+      <p class="muted">No homes assigned yet. Open an available home and assign it to a customer.</p>
+    <% } else { %>
+      <table>
+        <thead><tr><th>Stock #</th><th>Home</th><th>Customer</th><th>Status</th></tr></thead>
+        <tbody>
+        <% assignments.forEach(function (a) { %>
+          <tr>
+            <td><a href="/inventory/<%= a.id %>"><%= a.stock_number %></a></td>
+            <td><%= a.manufacturer %> <%= a.model %></td>
+            <td><a href="/customers/<%= a.customer_id %>"><%= a.first_name %> <%= a.last_name %></a></td>
+            <td><span class="status status-<%= a.status %>"><%= statusLabel(a.status) %></span></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+  <section class="card">
+    <h2>Newest customers</h2>
+    <% if (!recentCustomers.length) { %>
+      <p class="muted">No customers yet. <a href="/customers/new">Add the first one.</a></p>
+    <% } else { %>
+      <table>
+        <thead><tr><th>Name</th><th>Phone</th><th>Added</th></tr></thead>
+        <tbody>
+        <% recentCustomers.forEach(function (c) { %>
+          <tr>
+            <td><a href="/customers/<%= c.id %>"><%= c.first_name %> <%= c.last_name %></a></td>
+            <td><%= c.phone || '—' %></td>
+            <td><%= formatDate(c.created_at) %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+<%- include('partials/footer') %>

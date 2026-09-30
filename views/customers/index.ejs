@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Customers</h1>
+  <a class="btn primary" href="/customers/new">+ New customer</a>
+</div>
+
+<form method="get" action="/customers" class="filters">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search name, phone or email…">
+  <button class="btn" type="submit">Search</button>
+  <% if (q) { %><a href="/customers">Clear</a><% } %>
+</form>
+
+<% if (!customers.length) { %>
+  <div class="card muted"><%= q ? 'No customers match your search.' : 'No customers yet.' %> <a href="/customers/new">Add a customer.</a></div>
+<% } else { %>
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>City</th><th class="num">Homes</th><th>Added</th></tr></thead>
+      <tbody>
+      <% customers.forEach(function (c) { %>
+        <tr>
+          <td><a href="/customers/<%= c.id %>"><strong><%= c.last_name %>, <%= c.first_name %></strong></a></td>
+          <td><%= c.phone || '—' %></td>
+          <td><%= c.email || '—' %></td>
+          <td><%= [c.city, c.state].filter(Boolean).join(', ') || '—' %></td>
+          <td class="num"><%= c.home_count %></td>
+          <td><%= formatDate(c.created_at) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/footer') %>

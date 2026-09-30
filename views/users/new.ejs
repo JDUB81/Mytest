@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<h1>New staff account</h1>
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<form method="post" action="/users" class="card stack form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label>Full name <input name="full_name" value="<%= values.full_name || '' %>" required></label>
+  <label>Username <input name="username" value="<%= values.username || '' %>" autocomplete="off" required></label>
+  <label>Access level
+    <select name="role">
+      <% Object.keys(ROLES).forEach(function (r) { %>
+        <option value="<%= r %>" <%= values.role === r ? 'selected' : '' %>><%= ROLES[r] %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Temporary password <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+  <label>Confirm password <input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+  <p class="hint">Share the password privately; they can change it after signing in.</p>
+  <div class="actions"><button class="btn primary" type="submit">Create account</button> <a href="/users">Cancel</a></div>
+</form>
+<%- include('../partials/footer') %>

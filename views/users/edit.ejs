@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<h1>Edit <%= record.username %></h1>
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<form method="post" action="/users/<%= record.id %>" class="card stack form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label>Full name <input name="full_name" value="<%= record.full_name || '' %>" required></label>
+  <label>Access level
+    <select name="role">
+      <% Object.keys(ROLES).forEach(function (r) { %>
+        <option value="<%= r %>" <%= record.role === r ? 'selected' : '' %>><%= ROLES[r] %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label class="check"><input type="checkbox" name="active" value="1" <%= record.active ? 'checked' : '' %>> Account active (can sign in)</label>
+  <fieldset>
+    <legend>Reset password (optional)</legend>
+    <label>New password <input type="password" name="password" autocomplete="new-password" minlength="8"></label>
+    <label>Confirm new password <input type="password" name="confirm" autocomplete="new-password" minlength="8"></label>
+  </fieldset>
+  <div class="actions"><button class="btn primary" type="submit">Save</button> <a href="/users">Cancel</a></div>
+</form>
+<%- include('../partials/footer') %>

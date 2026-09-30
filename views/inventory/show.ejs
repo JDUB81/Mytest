@@ -1,0 +1,79 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <p class="crumb"><a href="/inventory">Inventory</a> /</p>
+    <h1>Stock #<%= home.stock_number %> <span class="status status-<%= home.status %>"><%= statusLabel(home.status) %></span></h1>
+    <p class="muted"><%= home.year || '' %> <%= home.manufacturer %> <%= home.model %> · <%= home.home_type %></p>
+  </div>
+  <% if (isManager) { %>
+    <div class="actions"><a class="btn" href="/inventory/<%= home.id %>/edit">Edit</a></div>
+  <% } %>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Details</h2>
+    <dl class="details">
+      <dt>Price</dt><dd><%= formatMoney(home.price) %></dd>
+      <dt>Bedrooms / Baths</dt><dd><%= home.bedrooms ?? '—' %> / <%= home.bathrooms ?? '—' %></dd>
+      <dt>Square feet</dt><dd><%= home.square_feet ? home.square_feet.toLocaleString() : '—' %></dd>
+      <dt>Dimensions</dt><dd><%= home.width_ft && home.length_ft ? home.width_ft + "' × " + home.length_ft + "'" : '—' %></dd>
+      <dt>Serial / VIN</dt><dd><%= home.serial_number || '—' %></dd>
+      <dt>Lot location</dt><dd><%= home.location || '—' %></dd>
+      <dt>Added</dt><dd><%= formatDate(home.created_at) %></dd>
+    </dl>
+    <% if (home.notes) { %><h3>Notes</h3><p class="notes"><%= home.notes %></p><% } %>
+  </section>
+
+  <section class="card" id="assign">
+    <h2>Customer</h2>
+    <% if (home.customer_id) { %>
+      <p><a href="/customers/<%= home.customer_id %>"><strong><%= home.first_name %> <%= home.last_name %></strong></a></p>
+      <p class="muted">Assigned <%= formatDate(home.assigned_at) %><%= home.assigned_by_name ? ' by ' + home.assigned_by_name : '' %></p>
+      <% if (isManager) { %>
+        <div class="actions">
+          <% if (home.status === 'pending') { %>
+            <form method="post" action="/inventory/<%= home.id %>/sold" class="inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn primary" type="submit">Mark as sold</button>
+            </form>
+          <% } %>
+          <form method="post" action="/inventory/<%= home.id %>/release" class="inline"
+                onsubmit="return confirm('Remove this customer and make the home available again?')">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn" type="submit">Release home</button>
+          </form>
+        </div>
+      <% } %>
+    <% } else if (home.status === 'available') { %>
+      <% if (!customers.length) { %>
+        <p class="muted">No customers yet. <a href="/customers/new">Add a customer</a> first, then assign this home.</p>
+      <% } else { %>
+        <form method="post" action="/inventory/assign" class="stack">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="inventory_id" value="<%= home.id %>">
+          <label>Assign to existing customer
+            <select name="customer_id" required>
+              <option value="">Choose a customer…</option>
+              <% customers.forEach(function (c) { %>
+                <option value="<%= c.id %>"><%= c.last_name %>, <%= c.first_name %><%= c.phone ? ' — ' + c.phone : '' %></option>
+              <% }) %>
+            </select>
+          </label>
+          <button class="btn primary" type="submit">Assign home</button>
+        </form>
+      <% } %>
+    <% } else { %>
+      <p class="muted">Not assigned.</p>
+    <% } %>
+  </section>
+</div>
+
+<% if (isManager && !home.customer_id) { %>
+  <form method="post" action="/inventory/<%= home.id %>/delete" class="danger-zone"
+        onsubmit="return confirm('Delete this home from inventory? This cannot be undone.')">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn danger" type="submit">Delete this home</button>
+  </form>
+<% } %>
+<%- include('../partials/footer') %>

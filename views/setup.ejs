@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<div class="auth-card">
+  <div class="auth-brand"><span class="logo big">PH</span><h1>Welcome to Premier Homes CRM</h1>
+    <p>Create the first <strong>Manager</strong> account. Managers can add inventory and create staff logins.</p></div>
+  <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+  <form method="post" action="/setup" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Your full name <input name="full_name" value="<%= values.full_name || '' %>" required></label>
+    <label>Username <input name="username" value="<%= values.username || '' %>" autocomplete="username" required></label>
+    <label>Password <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+    <label>Confirm password <input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+    <button type="submit" class="btn primary">Create manager account</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

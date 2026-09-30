@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Inventory</h1>
+  <% if (isManager) { %><a class="btn primary" href="/inventory/new">+ Add inventory</a><% } %>
+</div>
+
+<form method="get" action="/inventory" class="filters">
+  <div class="tabs">
+    <% [['available','Available'],['pending','Pending'],['sold','Sold'],['all','All']].forEach(function (t) { %>
+      <a class="tab <%= status === t[0] ? 'active' : '' %>" href="/inventory?status=<%= t[0] %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= t[1] %></a>
+    <% }) %>
+  </div>
+  <input type="hidden" name="status" value="<%= status %>">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search stock #, make, model, serial…">
+  <button class="btn" type="submit">Search</button>
+</form>
+
+<% if (!homes.length) { %>
+  <div class="card muted">No homes match.
+    <% if (isManager && status === 'available' && !q) { %><a href="/inventory/new">Add your first home.</a><% } %>
+  </div>
+<% } else { %>
+  <div class="card table-wrap">
+    <table>
+      <thead>
+        <tr><th>Stock #</th><th>Year / Make / Model</th><th>Type</th><th>Bed / Bath</th><th>Sq ft</th><th class="num">Price</th><th>Status</th><th>Customer</th></tr>
+      </thead>
+      <tbody>
+      <% homes.forEach(function (h) { %>
+        <tr>
+          <td><a href="/inventory/<%= h.id %>"><strong><%= h.stock_number %></strong></a></td>
+          <td><%= h.year || '' %> <%= h.manufacturer %> <%= h.model %></td>
+          <td><%= h.home_type %></td>
+          <td><%= h.bedrooms ?? '—' %> / <%= h.bathrooms ?? '—' %></td>
+          <td><%= h.square_feet ? h.square_feet.toLocaleString() : '—' %></td>
+          <td class="num"><%= formatMoney(h.price) %></td>
+          <td><span class="status status-<%= h.status %>"><%= statusLabel(h.status) %></span></td>
+          <td><% if (h.customer_id) { %><a href="/customers/<%= h.customer_id %>"><%= h.first_name %> <%= h.last_name %></a><% } else if (h.status === 'available') { %><a href="/inventory/<%= h.id %>#assign">Assign…</a><% } %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/footer') %>

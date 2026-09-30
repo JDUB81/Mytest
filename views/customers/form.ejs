@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+<h1><%= title %></h1>
+<%- include('../partials/errors', { errors: errors }) %>
+<form method="post" action="<%= customer.id ? '/customers/' + customer.id : '/customers' %>" class="card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <fieldset>
+    <legend>Contact</legend>
+    <div class="grid-2">
+      <label>First name * <input name="first_name" value="<%= customer.first_name || '' %>" required autofocus></label>
+      <label>Last name * <input name="last_name" value="<%= customer.last_name || '' %>" required></label>
+      <label>Phone <input type="tel" name="phone" value="<%= customer.phone || '' %>"></label>
+      <label>Email <input type="email" name="email" value="<%= customer.email || '' %>"></label>
+    </div>
+    <p class="hint">A phone number or email is required.</p>
+  </fieldset>
+  <fieldset>
+    <legend>Address</legend>
+    <label>Street address <input name="address" value="<%= customer.address || '' %>"></label>
+    <div class="grid-3">
+      <label>City <input name="city" value="<%= customer.city || '' %>"></label>
+      <label>State <input name="state" value="<%= customer.state || '' %>"></label>
+      <label>ZIP <input name="zip" value="<%= customer.zip || '' %>"></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Notes</legend>
+    <label>What are they looking for? Budget, timeline, land, financing…
+      <textarea name="notes" rows="5"><%= customer.notes || '' %></textarea></label>
+  </fieldset>
+  <div class="actions">
+    <button class="btn primary" type="submit"><%= customer.id ? 'Save changes' : 'Add customer' %></button>
+    <a href="<%= customer.id ? '/customers/' + customer.id : '/customers' %>">Cancel</a>
+  </div>
+</form>
+<%- include('../partials/footer') %>

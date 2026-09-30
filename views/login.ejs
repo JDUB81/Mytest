@@ -1,0 +1,12 @@
+<%- include('partials/header') %>
+<div class="auth-card">
+  <div class="auth-brand"><span class="logo big">PH</span><h1>Premier Homes</h1><p>Sales Center CRM</p></div>
+  <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Username <input name="username" value="<%= username %>" autocomplete="username" required autofocus></label>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit" class="btn primary">Sign in</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

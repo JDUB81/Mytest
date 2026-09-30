@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Staff accounts</h1>
+  <a class="btn primary" href="/users/new">+ New account</a>
+</div>
+<div class="card access-legend">
+  <p><span class="role-badge role-manager">Manager</span> Adds and edits inventory, marks homes sold, releases assignments, manages staff logins — plus everything a Sales Associate can do.</p>
+  <p><span class="role-badge role-sales">Sales Associate</span> Adds and edits customers, views inventory, and assigns available homes to existing customers.</p>
+</div>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Username</th><th>Access level</th><th>Status</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    <% users.forEach(function (u) { %>
+      <tr class="<%= u.active ? '' : 'inactive' %>">
+        <td><%= u.full_name %></td>
+        <td><%= u.username %></td>
+        <td><span class="role-badge role-<%= u.role %>"><%= ROLES[u.role] %></span></td>
+        <td><%= u.active ? 'Active' : 'Disabled' %></td>
+        <td><%= formatDate(u.created_at) %></td>
+        <td><a href="/users/<%= u.id %>/edit">Edit</a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>
