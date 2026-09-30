@@ -67,7 +67,7 @@ Requires Node.js 18 or newer.
 
 ```bash
 npm install
-SESSION_SECRET="some-long-random-string" npm start
+npm start
 ```
 
 Open http://localhost:3000. The first time, you'll be asked to create the first **Manager**
@@ -83,7 +83,7 @@ database is upgraded automatically on startup.
 | Variable | Purpose |
 | --- | --- |
 | `PORT` | Port to listen on (default `3000`) |
-| `SESSION_SECRET` | Secret for signing login cookies. **Set this in production**, otherwise everyone is signed out on restart |
+| `SESSION_SECRET` | Secret for signing login cookies. Optional: if unset, one is generated and saved to `data/.session-secret` |
 | `DB_PATH` | Location of the SQLite database file |
 | `UPLOAD_DIR` | Where photos are stored (default `data/uploads`) |
 | `COOKIE_SECURE=true` | Only send the login cookie over HTTPS (use when served over HTTPS) |

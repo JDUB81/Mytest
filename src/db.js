@@ -298,8 +298,12 @@ function getSettings(db) {
   return settings;
 }
 
+function defaultDbPath() {
+  return path.join(__dirname, '..', 'data', 'premier-homes.db');
+}
+
 function openDatabase(file) {
-  const target = file || process.env.DB_PATH || path.join(__dirname, '..', 'data', 'premier-homes.db');
+  const target = file || process.env.DB_PATH || defaultDbPath();
   if (target !== ':memory:') {
     fs.mkdirSync(path.dirname(target), { recursive: true });
   }
@@ -312,6 +316,7 @@ function openDatabase(file) {
 
 module.exports = {
   openDatabase,
+  defaultDbPath,
   MIGRATIONS,
   getSettings,
   ROLES,

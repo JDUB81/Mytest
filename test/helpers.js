@@ -1,4 +1,7 @@
 // Shared setup for the test files (not a test file itself).
+
+// Cheap password hashing keeps the suite fast.
+process.env.BCRYPT_ROUNDS = process.env.BCRYPT_ROUNDS || '4';
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
