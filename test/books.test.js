@@ -25,7 +25,7 @@ async function addVendor(agent, name = 'Cool Air HVAC') {
 async function soldDealWithAc({ sell = true } = {}) {
   const boss = await as(app, 'boss');
   await post(boss, '/settings/addons', { name: 'Central A/C', price: '4200', cost: '2900', taxable: '1' });
-  const ac = db.prepare('SELECT * FROM addon_catalog').get();
+  const ac = db.prepare('SELECT * FROM addon_catalog ORDER BY id DESC').get();
   const home = addHome(db, { price: 100000, invoice_cost: 70000, freight_cost: null });
   const customer = addCustomer(db);
   const sam = await as(app, 'sam');

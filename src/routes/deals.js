@@ -26,7 +26,7 @@ module.exports = function dealRoutes(db) {
   const updateItem = db.prepare('UPDATE deal_items SET description = ?, price = ?, cost = ?, taxable = ? WHERE id = ? AND deal_id = ?');
   const itemHasPayments = db.prepare('SELECT 1 FROM expenses WHERE deal_item_id = ? AND voided_at IS NULL LIMIT 1');
   const catalogItem = db.prepare('SELECT * FROM addon_catalog WHERE id = ?');
-  const activeCatalog = db.prepare('SELECT * FROM addon_catalog WHERE active = 1 ORDER BY name');
+  const activeCatalog = db.prepare('SELECT * FROM addon_catalog WHERE active = 1 ORDER BY category, name');
   const deleteItem = db.prepare('DELETE FROM deal_items WHERE id = ? AND deal_id = ?');
   const selectItem = db.prepare('SELECT * FROM deal_items WHERE id = ? AND deal_id = ?');
   const insertPayment = db.prepare(`
@@ -221,7 +221,7 @@ module.exports = function dealRoutes(db) {
     const preset = req.body.catalog_id ? catalogItem.get(Number(req.body.catalog_id)) : null;
     const description = text(req.body.description, 200) || (preset && preset.name);
     let price = number(req.body.price, { min: -MONEY.max, max: MONEY.max });
-    if (price.value === null && preset) price = { value: preset.price };
+    if (price.value === null && preset && preset.price) price = { value: preset.price };
     let cost;
     if (req.user.role === 'manager') {
       cost = number(req.body.cost, MONEY);

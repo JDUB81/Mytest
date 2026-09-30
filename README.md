@@ -38,8 +38,16 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 - Managers mark deals sold, or cancel them. A cancelled deal returns the home to inventory and keeps its history
 - Gross profit per deal (**managers only**)
 
+**Credit & max budget**
+- Credit application for applicant and co-applicant: personal, residence, employment and income, debts, bankruptcy, purchase, land and references. It pre-fills from the customer record and their deal, and prints as a signed application with an authorization statement
+- Social Security numbers are encrypted in the database (key in `data/.field-key`), shown masked as the last 4 digits, and printed in full only on the application (or left blank)
+- Max budget per lender: (max DTI % × household income) − monthly debts − lot rent − insurance estimate → max payment → max loan at the lender's rate and term → + down payment. Optional payment-to-income and minimum-down limits. Lender rules are editable under **Settings → Lender rules** (starting values for 21st and Triad are estimates)
+- In-stock homes that fit the customer's max budget (and bedrooms wanted)
+- Lender submission tracking (submitted, conditional, approved, declined…) with amount, rate, term, payment and conditions; the customer's stage updates automatically
+- Document checklist (ID, paystubs, bank statements, land deed…) with who received what and when
+
 **Books: check writing & job costs (managers only)**
-- Add-on price list: preset price and allotted cost for each option. Picking one on a deal fills both in, and both stay editable
+- One **Jobs & add-ons** list (Settings or Books): setup, HVAC, skirting, decks, utilities, permits and more, grouped by category, each with a price, allotted cost and default vendor. Picking a job on a deal fills in price and cost (both stay editable on that deal), and paying for the job pre-selects its vendor
 - Write checks to vendors, staff or anyone else. For a deal, pick the job (e.g. Central A/C) and see what's allotted, already paid and remaining, with a live warning if you're going over
 - Print checks (amount in words, check-on-top layout with two record stubs); check numbers count up automatically
 - Job costs on every deal: allotted vs. paid per job, actual gross profit, and a list of every deal with any over-budget jobs highlighted
@@ -91,8 +99,10 @@ Open http://localhost:3000. The first time, you'll be asked to create the first 
 account. After that, managers add staff under **Staff → New account**, and should fill in
 **Settings** (business info, tax rate, doc fee).
 
-Data lives in `data/premier-homes.db` and photos in `data/uploads/`. Use **Settings → Download
-backup** regularly, and back up the uploads folder too. When you install a new version, the
+Everything lives in the `data` folder: the database (`premier-homes.db`), photos (`uploads/`) and
+the encryption key for Social Security numbers (`.field-key`). **Back up the whole `data` folder**
+regularly. **Settings → Download backup** saves the database only; without `.field-key`, SSNs in a
+restored backup can't be read. When you install a new version, the
 database is upgraded automatically on startup.
 
 ### Settings (environment variables)

@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+<p class="crumb"><a href="/settings">Settings</a> /</p>
+<h1>Lender rules for max budget</h1>
+<div class="card small">
+  <p><strong>How max budget is estimated</strong> (for each active lender below):</p>
+  <ol>
+    <li>Household income = applicant + co-applicant gross monthly income (including other income).</li>
+    <li>Room for a home payment = (max DTI % × income) − monthly debts (vehicles, cards, other loans). If a max PTI % is set, the payment also can't exceed PTI % × income.</li>
+    <li>Subtract lot rent and the insurance estimate, since they're part of the monthly housing cost but not financed.</li>
+    <li>Max loan = what that payment pays off at the lender's rate and term.</li>
+    <li>Max budget = max loan + down payment, capped so the down payment meets the lender's minimum %.</li>
+  </ol>
+  <p class="muted">The starting 21st and Triad entries are placeholders based on publicly reported debt-to-income limits (about 43% for 21st; up to 48% back-end for Triad land-home). Replace the numbers with your current rate sheets, or send me your own formula and I'll build it in.</p>
+</div>
+
+<form method="post" action="/settings/lenders/insurance" class="card inline-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label class="inline-label">Monthly insurance estimate ($) <input name="budget_insurance_monthly" inputmode="decimal" value="<%= insurance %>" class="short"></label>
+  <button class="btn" type="submit">Save</button>
+</form>
+
+<% var row = function (l) { return l || {}; }; %>
+<% lenders.concat([null]).forEach(function (lp) { var l = row(lp); %>
+  <form method="post" action="/settings/lenders<%= l.id ? '/' + l.id : '' %>" class="card lender-form <%= lp && !l.active ? 'inactive-row' : '' %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2><%= lp ? l.name : 'Add a lender' %></h2>
+    <div class="grid-3">
+      <label>Name <input name="name" value="<%= l.name || '' %>" required></label>
+      <label>Max DTI (%) <input name="dti_max" inputmode="decimal" value="<%= l.dti_max ?? '' %>" required></label>
+      <label>Max PTI (%) — optional <input name="pti_max" inputmode="decimal" value="<%= l.pti_max ?? '' %>"></label>
+      <label>Interest rate (%) <input name="rate" inputmode="decimal" value="<%= l.rate ?? '' %>" required></label>
+      <label>Term (months) <input name="term_months" inputmode="numeric" value="<%= l.term_months ?? '' %>" required></label>
+      <label>Minimum down (%) <input name="min_down_percent" inputmode="decimal" value="<%= l.min_down_percent ?? '' %>"></label>
+    </div>
+    <label>Notes <input name="notes" value="<%= l.notes || '' %>"></label>
+    <div class="actions">
+      <% if (lp) { %><select name="active"><option value="1" <%= l.active ? 'selected' : '' %>>Active</option><option value="0" <%= l.active ? '' : 'selected' %>>Not used</option></select><% } %>
+      <input type="hidden" name="sort" value="<%= l.sort || 0 %>">
+      <button class="btn <%= lp ? '' : 'primary' %>" type="submit"><%= lp ? 'Save' : 'Add lender' %></button>
+    </div>
+  </form>
+<% }) %>
+<%- include('partials/footer') %>

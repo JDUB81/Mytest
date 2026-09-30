@@ -3,8 +3,8 @@ const os = require('os');
 const path = require('path');
 const express = require('express');
 const { requireRole } = require('../auth');
-const { getSettings, DEFAULT_SETTINGS } = require('../db');
-const { text, number } = require('../format');
+const { getSettings, DEFAULT_SETTINGS, JOB_CATEGORIES } = require('../db');
+const { text, number, choice } = require('../format');
 const { logActivity, today } = require('../deals');
 
 const NUMERIC = {
@@ -52,7 +52,13 @@ module.exports = function settingsRoutes(db) {
 
   // --- Add-on price list ---------------------------------------------------------
 
-  const catalog = db.prepare('SELECT * FROM addon_catalog ORDER BY active DESC, name');
+  const catalog = db.prepare(`
+    SELECT a.*, v.name AS vendor_name,
+      (SELECT COUNT(*) FROM deal_items di WHERE di.catalog_id = a.id) AS times_used
+    FROM addon_catalog a LEFT JOIN vendors v ON v.id = a.vendor_id
+    ORDER BY a.active DESC, a.name
+  `);
+  const vendorExists = db.prepare('SELECT id FROM vendors WHERE id = ?');
 
   function parseAddon(body) {
     const price = number(body.price, { max: 100000000 });
@@ -64,13 +70,19 @@ module.exports = function settingsRoutes(db) {
         cost: cost.value ?? 0,
         taxable: body.taxable === '1' ? 1 : 0,
         active: body.active === '0' ? 0 : 1,
+        category: choice(body.category, JOB_CATEGORIES) || 'Other',
+        vendor_id: vendorExists.get(Number(body.vendor_id)) ? Number(body.vendor_id) : null,
       },
       error: !text(body.name, 200) ? 'Enter a name.' : price.error || cost.error ? 'Price and cost must be numbers.' : null,
     };
   }
 
   router.get('/addons', (req, res) => {
-    res.render('addons', { title: 'Add-on price list', addons: catalog.all() });
+    res.render('addons', {
+      title: 'Jobs & add-ons',
+      addons: catalog.all(),
+      vendors: db.prepare('SELECT id, name, trade FROM vendors WHERE active = 1 ORDER BY name').all(),
+    });
   });
 
   router.post('/addons', (req, res) => {
@@ -79,8 +91,10 @@ module.exports = function settingsRoutes(db) {
       req.flash('error', error);
       return res.redirect('/settings/addons');
     }
-    db.prepare('INSERT INTO addon_catalog (name, price, cost, taxable, active) VALUES (@name, @price, @cost, @taxable, @active)').run(values);
-    req.flash('success', `${values.name} added to the price list.`);
+    db.prepare(
+      'INSERT INTO addon_catalog (name, price, cost, taxable, active, category, vendor_id) VALUES (@name, @price, @cost, @taxable, @active, @category, @vendor_id)'
+    ).run(values);
+    req.flash('success', `${values.name} added to the jobs list.`);
     res.redirect('/settings/addons');
   });
 
@@ -90,10 +104,87 @@ module.exports = function settingsRoutes(db) {
       req.flash('error', error);
       return res.redirect('/settings/addons');
     }
-    db.prepare('UPDATE addon_catalog SET name = @name, price = @price, cost = @cost, taxable = @taxable, active = @active WHERE id = @id')
+    db.prepare(`
+      UPDATE addon_catalog SET name = @name, price = @price, cost = @cost, taxable = @taxable, active = @active,
+        category = @category, vendor_id = @vendor_id
+      WHERE id = @id
+    `)
       .run({ ...values, id: Number(req.params.id) });
     req.flash('success', `${values.name} updated. Deals already written keep their own prices.`);
     res.redirect('/settings/addons');
+  });
+
+  // --- Lender rules used for max-budget estimates ------------------------------------
+
+  const lenders = db.prepare('SELECT * FROM lender_profiles ORDER BY active DESC, sort, name');
+
+  function parseLender(body) {
+    const errors = [];
+    const n = (k, label, opts) => {
+      const p = number(body[k], opts);
+      if (p.error) errors.push(`${label} is not valid.`);
+      return p.value;
+    };
+    const values = {
+      name: text(body.name, 120),
+      dti_max: n('dti_max', 'Max DTI', { max: 100 }),
+      pti_max: n('pti_max', 'Max PTI', { max: 100 }),
+      rate: n('rate', 'Rate', { max: 40 }),
+      term_months: n('term_months', 'Term', { integer: true, min: 12, max: 480 }),
+      min_down_percent: n('min_down_percent', 'Minimum down', { max: 100 }) ?? 0,
+      notes: text(body.notes, 1000),
+      active: body.active === '0' ? 0 : 1,
+      sort: Number(body.sort) || 0,
+    };
+    if (!values.name) errors.push('Name is required.');
+    if (!values.dti_max) errors.push('Max DTI is required.');
+    if (values.rate === null || values.rate === undefined) errors.push('Rate is required.');
+    if (!values.term_months) errors.push('Term is required.');
+    return { values, errors };
+  }
+
+  router.get('/lenders', (req, res) => {
+    res.render('lenders', { title: 'Lender rules', lenders: lenders.all(), insurance: getSettings(db).budget_insurance_monthly });
+  });
+
+  router.post('/lenders', (req, res) => {
+    const { values, errors } = parseLender(req.body);
+    if (errors.length) {
+      req.flash('error', errors.join(' '));
+      return res.redirect('/settings/lenders');
+    }
+    db.prepare(`
+      INSERT INTO lender_profiles (name, dti_max, pti_max, rate, term_months, min_down_percent, notes, active, sort)
+      VALUES (@name, @dti_max, @pti_max, @rate, @term_months, @min_down_percent, @notes, @active, @sort)
+    `).run(values);
+    req.flash('success', `${values.name} added.`);
+    res.redirect('/settings/lenders');
+  });
+
+  router.post('/lenders/insurance', (req, res) => {
+    const p = number(req.body.budget_insurance_monthly, { max: 10000 });
+    if (p.error) req.flash('error', 'Insurance estimate must be a number.');
+    else {
+      upsert.run('budget_insurance_monthly', String(p.value ?? 0));
+      req.flash('success', 'Insurance estimate saved.');
+    }
+    res.redirect('/settings/lenders');
+  });
+
+  router.post('/lenders/:id', (req, res) => {
+    const { values, errors } = parseLender(req.body);
+    if (errors.length) {
+      req.flash('error', errors.join(' '));
+      return res.redirect('/settings/lenders');
+    }
+    db.prepare(`
+      UPDATE lender_profiles SET name = @name, dti_max = @dti_max, pti_max = @pti_max, rate = @rate, term_months = @term_months,
+        min_down_percent = @min_down_percent, notes = @notes, active = @active, sort = @sort
+      WHERE id = @id
+    `).run({ ...values, id: Number(req.params.id) });
+    logActivity(db, { userId: req.user.id, message: `Updated lender rules for ${values.name}` });
+    req.flash('success', `${values.name} updated.`);
+    res.redirect('/settings/lenders');
   });
 
   // Consistent snapshot of the whole database (safe while the app is running).

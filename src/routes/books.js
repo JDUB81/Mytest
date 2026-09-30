@@ -123,6 +123,15 @@ module.exports = function bookRoutes(db) {
       deals: openDeals.all(),
       financials,
       commissionRate,
+      // Default vendor for each job line, from the jobs list.
+      lineVendors: financials
+        ? Object.fromEntries(
+            financials.items
+              .filter((i) => i.catalog_id)
+              .map((i) => [i.id, (db.prepare('SELECT vendor_id FROM addon_catalog WHERE id = ?').get(i.catalog_id) || {}).vendor_id])
+              .filter(([, v]) => v)
+          )
+        : {},
     });
   }
 

@@ -24,7 +24,7 @@
         <% if (!fin.items.length) { %><p class="muted small">This deal has no add-ons, so nothing is allotted. Anything you pay here counts as over budget.</p><% } %>
         <% fin.jobs.lines.filter(function (l) { return l.item; }).forEach(function (l) { %>
           <label class="job-option">
-            <input type="radio" name="deal_item_id" value="<%= l.item.id %>" data-remaining="<%= l.remaining %>" data-label="<%= l.label %>" <%= String(values.deal_item_id) === String(l.item.id) ? 'checked' : '' %>>
+            <input type="radio" name="deal_item_id" value="<%= l.item.id %>" data-remaining="<%= l.remaining %>" data-label="<%= l.label %>" data-vendor="<%= lineVendors[l.item.id] || '' %>" <%= String(values.deal_item_id) === String(l.item.id) ? 'checked' : '' %>>
             <span class="job-name"><%= l.label %></span>
             <span class="job-nums">allotted <strong><%= formatMoneyCents(l.allotted) %></strong> · paid <%= formatMoneyCents(l.paid) %> ·
               <% if (l.over > 0) { %><span class="overdue-text"><%= formatMoneyCents(l.over) %> over</span><% } else { %>remaining <strong><%= formatMoneyCents(l.remaining) %></strong><% } %></span>

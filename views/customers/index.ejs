@@ -35,7 +35,7 @@
 <% } else { %>
   <div class="card table-wrap">
     <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>Stage</th><th>Source</th><th>Salesperson</th><th>Budget</th><th>Follow-up</th><th class="num">Deals</th></tr></thead>
+      <thead><tr><th>Name</th><th>Phone</th><th>Stage</th><th>Source</th><th>Salesperson</th><th>Budget</th><th>Max budget</th><th>Follow-up</th><th class="num">Deals</th></tr></thead>
       <tbody>
       <% customers.forEach(function (c) { %>
         <tr>
@@ -46,6 +46,7 @@
           <td class="small"><%= c.lead_source || '—' %></td>
           <td class="small"><%= c.salesperson_name || '—' %></td>
           <td class="small"><%= c.budget ? formatMoney(c.budget) : '—' %></td>
+          <td class="small"><%= c.max_budget != null ? formatMoney(c.max_budget) : '—' %></td>
           <td class="small <%= c.follow_up_date && c.follow_up_date <= today() ? 'overdue-text' : '' %>"><%= c.follow_up_date ? formatDate(c.follow_up_date) : '—' %></td>
           <td class="num"><%= c.deal_count %></td>
         </tr>

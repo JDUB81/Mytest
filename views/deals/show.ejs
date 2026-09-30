@@ -89,19 +89,25 @@
     <% if (itemsEditable) { %>
       <form method="post" action="/deals/<%= deal.id %>/items" class="item-form" id="addon-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <select name="catalog_id" aria-label="Pick from price list" class="addon-pick">
-          <option value="">Custom item…</option>
-          <% catalog.forEach(function (c) { %>
-            <option value="<%= c.id %>" data-name="<%= c.name %>" data-price="<%= c.price %>" <% if (isManager) { %>data-cost="<%= c.cost %>"<% } %> data-taxable="<%= c.taxable %>"><%= c.name %> — <%= formatMoney(c.price) %></option>
+        <select name="catalog_id" aria-label="Pick a job" class="addon-pick">
+          <option value="">Pick a job or add-on… (or type a custom one below)</option>
+          <% var cats = {}; catalog.forEach(function (c) { (cats[c.category || 'Other'] = cats[c.category || 'Other'] || []).push(c); }); %>
+          <% JOB_CATEGORIES.filter(function (k) { return cats[k]; }).forEach(function (k) { %>
+            <optgroup label="<%= k %>">
+              <% cats[k].forEach(function (c) { %>
+                <option value="<%= c.id %>" data-name="<%= c.name %>" data-price="<%= c.price %>" <% if (isManager) { %>data-cost="<%= c.cost %>"<% } %> data-taxable="<%= c.taxable %>"><%= c.name %><%= c.price ? ' — ' + formatMoney(c.price) : '' %></option>
+              <% }) %>
+            </optgroup>
           <% }) %>
         </select>
-        <input name="description" placeholder="Description">
+        <input name="description" placeholder="Description" list="job-names">
+        <datalist id="job-names"><% catalog.forEach(function (c) { %><option><%= c.name %></option><% }) %></datalist>
         <input name="price" inputmode="decimal" placeholder="Price" class="short">
         <% if (isManager) { %><input name="cost" inputmode="decimal" placeholder="Allotted cost" class="short"><% } %>
         <label class="check small"><input type="checkbox" name="taxable" value="1" checked> Taxable</label>
         <button class="btn" type="submit">Add</button>
       </form>
-      <p class="hint">Pick from the price list to fill in the price<%= isManager ? ' and allotted cost' : '' %>, then change it if needed.<% if (isManager && !catalog.length) { %> <a href="/settings/addons">Set up the price list</a>.<% } %></p>
+      <p class="hint">Pick from the price list to fill in the price<%= isManager ? ' and allotted cost' : '' %>, then change it if needed.<% if (isManager) { %> <a href="/settings/addons">Edit the jobs list</a><% } %></p>
     <% } %>
   </section>
 </div>

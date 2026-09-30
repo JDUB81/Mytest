@@ -50,6 +50,66 @@ const PAYMENT_KINDS = { deposit: 'Deposit', payment: 'Payment', refund: 'Refund'
 const PAYMENT_METHODS = {
   cash: 'Cash', check: 'Check', card: 'Card', ach: 'ACH / bank transfer', wire: 'Wire', lender: 'Lender funding', other: 'Other',
 };
+// Starting jobs & add-ons list: [name, category, taxable].
+const DEFAULT_JOBS = [
+  ['Delivery & setup — single-wide', 'Delivery & setup', 1],
+  ['Delivery & setup — double-wide', 'Delivery & setup', 1],
+  ['Delivery & setup — triple-wide', 'Delivery & setup', 1],
+  ['Escort / oversize transport', 'Delivery & setup', 1],
+  ['Blocking, leveling & tie-downs', 'Delivery & setup', 1],
+  ['Central A/C', 'HVAC', 1],
+  ['Heat pump', 'HVAC', 1],
+  ['HVAC hookup & ductwork', 'HVAC', 1],
+  ['Vinyl skirting', 'Exterior', 1],
+  ['Brick / masonry skirting', 'Exterior', 1],
+  ['Steps / porch', 'Exterior', 1],
+  ['Deck', 'Exterior', 1],
+  ['Gutters', 'Exterior', 1],
+  ['Foundation / pad', 'Site work', 1],
+  ['Site prep & grading', 'Site work', 1],
+  ['Driveway', 'Site work', 1],
+  ['Utility hookups (water/sewer/electric)', 'Utilities', 1],
+  ['Electrical service / meter pole', 'Utilities', 1],
+  ['Plumbing hookup', 'Utilities', 1],
+  ['Septic system', 'Utilities', 1],
+  ['Well', 'Utilities', 1],
+  ['Appliance package', 'Home options', 1],
+  ['Washer & dryer', 'Home options', 1],
+  ['Extended warranty', 'Home options', 0],
+  ['Permits', 'Permits & fees', 0],
+  ['Title & registration', 'Permits & fees', 0],
+  ['Survey / engineer letter', 'Permits & fees', 0],
+];
+
+const JOB_CATEGORIES = ['Delivery & setup', 'HVAC', 'Exterior', 'Site work', 'Utilities', 'Home options', 'Permits & fees', 'Other'];
+
+const APPLICATION_STATUSES = {
+  submitted: 'Submitted',
+  pending: 'Pending / more info',
+  conditional: 'Conditional approval',
+  approved: 'Approved',
+  countered: 'Counter-offer',
+  declined: 'Declined',
+  withdrawn: 'Withdrawn',
+};
+
+// Stips commonly requested by manufactured-home lenders.
+const DOCUMENT_TYPES = {
+  photo_id: 'Photo ID (applicant)',
+  co_photo_id: 'Photo ID (co-applicant)',
+  ss_card: 'Social Security card(s)',
+  paystubs: 'Recent paystubs',
+  w2_tax: 'W-2s / tax returns',
+  bank_statements: 'Bank statements',
+  award_letter: 'Benefit / award letter (SSI, disability, pension)',
+  proof_residence: 'Proof of residence (utility bill)',
+  land_deed: 'Land deed / lease / park approval',
+  landlord_ref: 'Rental history / landlord reference',
+  insurance: 'Homeowner insurance binder',
+  signed_app: 'Signed credit application',
+  down_payment: 'Down payment verification',
+};
+
 const COMMISSION_PLANS = {
   none: 'No commission',
   sales: 'Salesperson — % of each deal\u2019s gross profit',
@@ -89,6 +149,7 @@ const DEFAULT_SETTINGS = {
   sales_commission_percent: '25',
   gm_commission_percent: '35',
   next_check_number: '1001',
+  budget_insurance_monthly: '100',
   deposit_terms:
     'Deposits hold the selected home for the buyer. Refund terms are subject to the purchase agreement.',
 };
@@ -395,6 +456,89 @@ const MIGRATIONS = [
       db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('sales_commission_percent', ?)").run(old.value);
     }
   },
+  (db) => {
+    db.exec(`
+      ALTER TABLE addon_catalog ADD COLUMN category TEXT;
+      ALTER TABLE addon_catalog ADD COLUMN vendor_id INTEGER REFERENCES vendors(id);
+
+      -- One credit application per customer. Most answers live in a JSON document;
+      -- SSNs are encrypted separately (see src/secure.js).
+      CREATE TABLE credit_apps (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id  INTEGER NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+        data         TEXT NOT NULL DEFAULT '{}',
+        ssn_enc      TEXT,
+        co_ssn_enc   TEXT,
+        signed_on    TEXT,
+        updated_by   INTEGER REFERENCES users(id),
+        created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      -- Lender qualifying rules used to estimate each customer's max budget.
+      CREATE TABLE lender_profiles (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        name             TEXT NOT NULL,
+        dti_max          REAL NOT NULL,
+        pti_max          REAL,
+        rate             REAL NOT NULL,
+        term_months      INTEGER NOT NULL,
+        min_down_percent REAL NOT NULL DEFAULT 0,
+        notes            TEXT,
+        active           INTEGER NOT NULL DEFAULT 1,
+        sort             INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE lender_submissions (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id      INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        deal_id          INTEGER REFERENCES deals(id),
+        lender           TEXT NOT NULL,
+        submitted_on     TEXT NOT NULL,
+        status           TEXT NOT NULL DEFAULT 'submitted',
+        amount_requested REAL,
+        amount_approved  REAL,
+        rate             REAL,
+        term_months      INTEGER,
+        payment          REAL,
+        conditions       TEXT,
+        notes            TEXT,
+        created_by       INTEGER REFERENCES users(id),
+        created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_submissions_customer ON lender_submissions(customer_id);
+
+      CREATE TABLE customer_documents (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        doc_type     TEXT NOT NULL,
+        received_on  TEXT NOT NULL,
+        received_by  INTEGER REFERENCES users(id),
+        UNIQUE (customer_id, doc_type)
+      );
+    `);
+
+    // Categorize anything already on the list, then add every standard job that's missing.
+    const setCategory = db.prepare('UPDATE addon_catalog SET category = ? WHERE category IS NULL AND name LIKE ?');
+    for (const [pattern, category] of [
+      ['%setup%', 'Delivery & setup'], ['%A/C%', 'HVAC'], ['%heat pump%', 'HVAC'], ['%HVAC%', 'HVAC'], ['%skirting%', 'Exterior'],
+      ['%step%', 'Exterior'], ['%deck%', 'Exterior'], ['%gutter%', 'Exterior'], ['%permit%', 'Permits & fees'],
+      ['%septic%', 'Utilities'], ['%well%', 'Utilities'], ['%foundation%', 'Site work'],
+    ]) setCategory.run(category, pattern);
+    db.prepare("UPDATE addon_catalog SET category = 'Other' WHERE category IS NULL").run();
+    const exists = db.prepare('SELECT 1 FROM addon_catalog WHERE lower(name) = lower(?)');
+    const addJob = db.prepare('INSERT INTO addon_catalog (name, category, price, cost, taxable) VALUES (?, ?, 0, 0, ?)');
+    for (const [name, category, taxable] of DEFAULT_JOBS) if (!exists.get(name)) addJob.run(name, category, taxable);
+
+    const lender = db.prepare(
+      'INSERT INTO lender_profiles (name, dti_max, pti_max, rate, term_months, min_down_percent, notes, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    lender.run('21st Mortgage (estimate)', 43, null, 9.99, 240, 0,
+      'Placeholder: about 43% max debt-to-income is commonly reported. Replace rate, term and down payment with your current 21st rate sheet.', 1);
+    lender.run('Triad Financial (estimate)', 48, null, 9.99, 240, 0,
+      'Placeholder: Triad advertises back-end DTI up to 48% with no housing ratio (land-home). Replace rate, term and down payment with your current Triad rate sheet.', 2);
+  },
 ];
 
 function migrate(db) {
@@ -445,6 +589,9 @@ module.exports = {
   PAYMENT_METHODS,
   NOTE_KINDS,
   COMMISSION_PLANS,
+  JOB_CATEGORIES,
+  APPLICATION_STATUSES,
+  DOCUMENT_TYPES,
   EXPENSE_CATEGORIES,
   EXPENSE_METHODS,
   NON_OVERHEAD,

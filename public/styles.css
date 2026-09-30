@@ -289,3 +289,43 @@ tr.selected-row td { background: var(--bg); font-weight: 600; }
 .job-card h2 { font-size: 1.05rem; }
 
 [hidden] { display: none !important; }
+
+/* ---- Jobs list, credit, lenders ---- */
+.addon-head { display: none; }
+.addon-row .money-in { width: 100px; }
+.needs-price input[name=price] { border-color: var(--err); }
+.lender-form h2 { font-size: 1.05rem; }
+.credit-grid td { padding: .3rem .5rem; vertical-align: middle; }
+.credit-grid td:first-child { width: 26%; color: var(--muted); font-size: .9rem; }
+.credit-grid input, .credit-grid select { padding: .35rem .5rem; }
+.credit-grid .section-row td { background: var(--bg); font-weight: 700; color: var(--text); text-transform: uppercase; font-size: .75rem; letter-spacing: .05em; }
+.credit-form.no-co .co-col { display: none; }
+.co-toggle { margin-bottom: .75rem; font-weight: 600; }
+.form-section { font-size: 1rem; margin: 1rem 0 .5rem; }
+.form-section:first-child { margin-top: 0; }
+.inline-field { display: grid; grid-template-columns: 34% 1fr; align-items: center; gap: .75rem; font-weight: 500; margin-bottom: .4rem; }
+@media (max-width: 700px) { .inline-field { grid-template-columns: 1fr; gap: .2rem; } }
+.submission { border: 1px solid var(--border); border-radius: 6px; padding: .5rem .75rem; margin-bottom: .5rem; }
+.submission summary { cursor: pointer; display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.submission-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: .75rem; align-items: end; }
+.submission-form .span-all { grid-column: 1 / -1; }
+@media (max-width: 700px) { .submission-form { grid-template-columns: 1fr 1fr; } }
+.app-status { display: inline-block; padding: .05rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 700; background: var(--sold-bg); color: var(--sold); }
+.app-approved, .app-conditional { background: var(--ok-bg); color: var(--ok); }
+.app-submitted, .app-pending, .app-countered { background: var(--warn-bg); color: var(--warn); }
+.app-declined, .app-withdrawn { background: var(--err-bg); color: var(--err); }
+.new-submission { margin-top: .75rem; }
+.doc-list { display: flex; flex-direction: column; gap: .35rem; }
+.doc-list .check { font-weight: 400; align-items: flex-start; }
+.doc-list .btn { align-self: flex-start; margin-top: .5rem; }
+@media (min-width: 900px) {
+  section.card > form.addon-row {
+    display: grid; grid-template-columns: minmax(0, 1.7fr) 124px 84px 84px 92px minmax(0, 1.1fr) 52px 84px 72px;
+    gap: .4rem; align-items: center; flex-wrap: nowrap;
+  }
+  section.card > form.addon-row > * { min-width: 0; width: 100%; }
+  section.card > form.addon-row .money-in { width: 100%; }
+  section.card > form.addon-row .margin-cell { min-width: 0; font-size: .75rem; }
+  section.card > form.addon-row > span.small.muted:last-child { grid-column: 1 / -1; margin-top: -.3rem; }
+  section.card > form.addon-row input[name=name] { min-width: 0; }
+}

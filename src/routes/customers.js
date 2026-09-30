@@ -3,6 +3,7 @@ const { requireRole } = require('../auth');
 const { LEAD_STATUSES, LEAD_SOURCES, LAND_STATUSES, FINANCING_TYPES } = require('../db');
 const { text, number, date, choice } = require('../format');
 const { logActivity, today } = require('../deals');
+const credit = require('../credit');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTACT_METHODS = ['Phone call', 'Text', 'Email'];
@@ -156,6 +157,8 @@ module.exports = function customerRoutes(db) {
         ORDER BY ${followUp ? 'c.follow_up_date,' : ''} c.last_name, c.first_name
       `)
       .all(params);
+    const budgets = credit.bestBudgets(db);
+    for (const c of customers) c.max_budget = budgets.has(c.id) ? budgets.get(c.id).maxPrice : null;
     const stageCounts = {};
     for (const row of db.prepare('SELECT lead_status, COUNT(*) n FROM customers GROUP BY lead_status').all()) {
       stageCounts[row.lead_status] = row.n;
@@ -189,9 +192,31 @@ module.exports = function customerRoutes(db) {
       ...activityFor.all(c.id).map((a) => ({ ...a, type: 'activity' })),
     ].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : b.id - a.id));
 
+    const app = credit.loadApp(db, c.id);
+    const budget = app ? credit.budgetsFor(db, app.data) : null;
+    const fitLimit = budget && budget.best ? budget.best.maxPrice : null;
+    const homesThatFit = fitLimit
+      ? db
+          .prepare(`
+            SELECT id, stock_number, year, manufacturer, model, home_type, bedrooms, bathrooms, price FROM inventory
+            WHERE status = 'available' AND price IS NOT NULL AND price <= ?
+              AND (? IS NULL OR bedrooms >= ?)
+            ORDER BY price DESC LIMIT 10
+          `)
+          .all(fitLimit, c.desired_bedrooms, c.desired_bedrooms)
+      : [];
     res.render('customers/show', {
       title: `${c.first_name} ${c.last_name}`,
       customer: c,
+      creditApp: app ? { updated_at: app.updated_at, hasSsn: !!app.ssn_enc, hasCo: !!app.data.has_co } : null,
+      budget,
+      homesThatFit,
+      submissions: db.prepare('SELECT * FROM lender_submissions WHERE customer_id = ? ORDER BY submitted_on DESC, id DESC').all(c.id),
+      documents: Object.fromEntries(
+        db.prepare('SELECT d.doc_type, d.received_on, u.full_name FROM customer_documents d LEFT JOIN users u ON u.id = d.received_by WHERE d.customer_id = ?')
+          .all(c.id).map((d) => [d.doc_type, d])
+      ),
+      lenderNames: db.prepare('SELECT name FROM lender_profiles WHERE active = 1 ORDER BY sort, name').all().map((l) => l.name.replace(/ \(estimate\)$/, '')),
       deals: dealsFor.all(c.id),
       availableHomes: availableHomes.all(),
       timeline,

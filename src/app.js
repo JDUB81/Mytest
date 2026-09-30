@@ -67,6 +67,9 @@ function createApp(db, options = {}) {
       PAYMENT_METHODS: db_.PAYMENT_METHODS,
       NOTE_KINDS: db_.NOTE_KINDS,
       COMMISSION_PLANS: db_.COMMISSION_PLANS,
+      JOB_CATEGORIES: db_.JOB_CATEGORIES,
+      APPLICATION_STATUSES: db_.APPLICATION_STATUSES,
+      DOCUMENT_TYPES: db_.DOCUMENT_TYPES,
       EXPENSE_CATEGORIES: db_.EXPENSE_CATEGORIES,
       EXPENSE_METHODS: db_.EXPENSE_METHODS,
       HOME_TYPES: db_.HOME_TYPES,
@@ -89,6 +92,7 @@ function createApp(db, options = {}) {
   app.use(require('./routes/dashboard')(db));
   app.use('/inventory', require('./routes/inventory')(db, { uploadDir }));
   app.use('/photos', require('./routes/photos')(db, { uploadDir }));
+  app.use('/customers', require('./routes/credit')(db));
   app.use('/customers', require('./routes/customers')(db));
   app.use('/users', require('./routes/users')(db));
   app.use('/deals', require('./routes/deals')(db));

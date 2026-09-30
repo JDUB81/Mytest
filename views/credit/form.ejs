@@ -1,0 +1,61 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/customers/<%= customer.id %>">&larr; <%= customer.first_name %> <%= customer.last_name %></a></p>
+<div class="page-head">
+  <h1>Credit application</h1>
+  <div class="actions"><a class="btn" href="/customers/<%= customer.id %>/credit/print" target="_blank" rel="noopener">Print</a></div>
+</div>
+<p class="muted">Filled in from the customer record where we could. Everything here is used to print the application and to estimate the customer's max budget.</p>
+<%- include('../partials/errors', { errors: errors }) %>
+
+<% var val = function (k) { return data[k] === undefined || data[k] === null ? '' : data[k]; }; %>
+<% var field = function (f, key) {
+  var v = val(key);
+  if (f.type === 'select') {
+    var out = '<select name="' + key + '"><option value=""></option>';
+    f.options.forEach(function (o) { out += '<option' + (v === o ? ' selected' : '') + '>' + o.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'; });
+    return out + '</select>';
+  }
+  var type = f.type === 'date' ? 'date' : 'text';
+  var mode = f.type === 'money' ? ' inputmode="decimal"' : f.type === 'number' ? ' inputmode="numeric"' : '';
+  return '<input type="' + type + '" name="' + key + '" value="' + String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"' + mode + '>';
+}; %>
+
+<form method="post" action="/customers/<%= customer.id %>/credit" class="credit-form" id="credit-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label class="check co-toggle"><input type="checkbox" name="has_co" value="1" id="has-co" <%= data.has_co ? 'checked' : '' %>> There is a co-applicant</label>
+
+  <div class="card table-wrap">
+    <table class="credit-grid">
+      <thead><tr><th></th><th>Applicant</th><th class="co-col">Co-applicant</th></tr></thead>
+      <tbody>
+        <tr class="section-row"><td colspan="3">Social Security number</td></tr>
+        <tr>
+          <td>SSN</td>
+          <td><input name="ssn" inputmode="numeric" autocomplete="off" placeholder="<%= ssnMask ? ssnMask + ' on file — type to replace' : '123-45-6789' %>">
+            <% if (ssnMask) { %><label class="check small"><input type="checkbox" name="clear_ssn" value="1"> remove</label><% } %></td>
+          <td class="co-col"><input name="co_ssn" inputmode="numeric" autocomplete="off" placeholder="<%= coSsnMask ? coSsnMask + ' on file — type to replace' : '123-45-6789' %>">
+            <% if (coSsnMask) { %><label class="check small"><input type="checkbox" name="clear_co_ssn" value="1"> remove</label><% } %></td>
+        </tr>
+        <% PERSON_FIELDS.forEach(function (f) { %>
+          <% if (f.section) { %>
+            <tr class="section-row"><td colspan="3"><%= f.section %></td></tr>
+          <% } else { %>
+            <tr><td><%= f.label %></td><td><%- field(f, 'a_' + f.key) %></td><td class="co-col"><%- field(f, 'c_' + f.key) %></td></tr>
+          <% } %>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <% PURCHASE_FIELDS.forEach(function (f) { %>
+      <% if (f.section) { %><h2 class="form-section"><%= f.section %></h2><% } else { %>
+        <label class="inline-field"><span><%= f.label %></span><%- field(f, f.key) %></label>
+      <% } %>
+    <% }) %>
+  </div>
+  <p class="hint">SSNs are stored encrypted and shown only as the last 4 digits. They print in full only on the application itself.</p>
+  <div class="actions"><button class="btn primary" type="submit">Save application</button> <a href="/customers/<%= customer.id %>">Cancel</a></div>
+</form>
+<script src="/app.js"></script>
+<%- include('../partials/footer') %>

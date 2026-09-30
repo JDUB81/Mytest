@@ -55,8 +55,9 @@
       var opt = e.target.selectedOptions[0];
       if (!opt || !opt.value) return;
       addonForm.elements.description.value = opt.dataset.name;
-      addonForm.elements.price.value = opt.dataset.price;
-      if (addonForm.elements.cost && opt.dataset.cost !== undefined) addonForm.elements.cost.value = opt.dataset.cost;
+      // A $0 price means "not set yet" on the jobs list, so leave the box empty to type one.
+      addonForm.elements.price.value = Number(opt.dataset.price) ? opt.dataset.price : '';
+      if (addonForm.elements.cost && opt.dataset.cost !== undefined) addonForm.elements.cost.value = Number(opt.dataset.cost) ? opt.dataset.cost : '';
       addonForm.elements.taxable.checked = opt.dataset.taxable === '1';
       addonForm.elements.price.focus();
     });
@@ -97,6 +98,9 @@
     };
     checkForm.querySelectorAll('input[name="deal_item_id"]').forEach(function (r) {
       r.addEventListener('change', function () {
+        // Pre-select the job's usual vendor if none is chosen yet.
+        var vendorSelect = checkForm.elements.vendor_id;
+        if (r.dataset.vendor && vendorSelect && !vendorSelect.value) vendorSelect.value = r.dataset.vendor;
         // Suggest paying what's left on that job.
         var left = Number(r.dataset.remaining);
         if (left > 0 && !amount.value) amount.value = left.toFixed(2);
@@ -107,5 +111,13 @@
     var preselected = checkForm.querySelector('input[name="deal_item_id"]:checked');
     if (preselected && !amount.value && Number(preselected.dataset.remaining) > 0) amount.value = Number(preselected.dataset.remaining).toFixed(2);
     checkBudget();
+  }
+  // Credit application: hide the co-applicant column when there isn't one.
+  var creditForm = document.getElementById('credit-form');
+  if (creditForm) {
+    var coBox = document.getElementById('has-co');
+    var syncCo = function () { creditForm.classList.toggle('no-co', !coBox.checked); };
+    coBox.addEventListener('change', syncCo);
+    syncCo();
   }
 })();

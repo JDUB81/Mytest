@@ -47,16 +47,16 @@ function seedDemo(file) {
     db.prepare("UPDATE users SET commission_plan = 'sales', commission_since = ? WHERE role = 'sales'").run(today(-120));
     db.prepare("UPDATE users SET commission_plan = 'gm', commission_since = ? WHERE id = ?").run(today(-120), mgr);
 
+    // Sample prices on the standard jobs list (the list itself comes from the database setup).
     const catalogIds = {};
-    const addon = db.prepare('INSERT INTO addon_catalog (name, price, cost, taxable) VALUES (?, ?, ?, ?)');
-    for (const [name, price, cost, taxable] of [
-      ['Delivery & setup (single)', 4800, 3100, 1], ['Delivery & setup (double)', 6500, 4200, 1],
-      ['Delivery & setup (triple)', 7200, 4900, 1], ['Central A/C', 4200, 2900, 1], ['Heat pump', 5600, 3900, 1],
-      ['Vinyl skirting', 2100, 1100, 1], ['Steps (2)', 900, 450, 1], ['Deck 10x12', 3200, 1800, 1],
-      ['Permits', 450, 450, 0], ['Gutters', 850, 400, 1],
-    ]) {
-      catalogIds[name] = addon.run(name, price, cost, taxable).lastInsertRowid;
-    }
+    const price = db.prepare('UPDATE addon_catalog SET price = ?, cost = ? WHERE name = ?');
+    for (const [name, p, c] of [
+      ['Delivery & setup — single-wide', 4800, 3100], ['Delivery & setup — double-wide', 6500, 4200],
+      ['Delivery & setup — triple-wide', 7200, 4900], ['Central A/C', 4200, 2900], ['Heat pump', 5600, 3900],
+      ['Vinyl skirting', 2100, 1100], ['Steps / porch', 900, 450], ['Deck', 3200, 1800], ['Permits', 450, 450],
+      ['Gutters', 850, 400], ['Septic system', 6500, 4800], ['Utility hookups (water/sewer/electric)', 1800, 1200],
+    ]) price.run(p, c, name);
+    for (const row of db.prepare('SELECT id, name FROM addon_catalog').all()) catalogIds[row.name] = row.id;
 
     const home = db.prepare(`
       INSERT INTO inventory (stock_number, manufacturer, model, year, home_type, serial_number, bedrooms, bathrooms,
@@ -147,19 +147,19 @@ function seedDemo(file) {
     dealIds.Rivera = makeDeal({
       customer: 'Rivera', stock: 'PH-1001', sp: s1, status: 'pending', price: 94900, discount: 1500, fin: 'chattel',
       lender: 'Triad Financial', openedDaysAgo: 6,
-      items: [['Delivery & setup (double)', 6500, 4200, 1], ['Central A/C', 4200, 2900, 1], ['Vinyl skirting', 2100, 1100, 1], ['Steps (2)', 900, 450, 1]],
+      items: [['Delivery & setup — double-wide', 6500, 4200, 1], ['Central A/C', 4200, 2900, 1], ['Vinyl skirting', 2100, 1100, 1], ['Steps / porch', 900, 450, 1]],
       payments: [['deposit', 2500, 'check', '#1042', 6]],
     });
     dealIds.Nguyen = makeDeal({
       customer: 'Nguyen', stock: 'PH-1002', sp: s1, status: 'sold', price: 57500, fin: 'cash', lender: null,
       openedDaysAgo: 50, soldDaysAgo: 35,
-      items: [['Delivery & setup (single)', 4800, 3100, 1], ['Permits', 450, 450, 0]],
+      items: [['Delivery & setup — single-wide', 4800, 3100, 1], ['Permits', 450, 450, 0]],
       payments: [['deposit', 5000, 'card', 'Visa 4421', 50], ['payment', 61315.75, 'wire', 'Wire 88213', 35]],
     });
     dealIds.Adams = makeDeal({
       customer: 'Adams', stock: 'PH-1005', sp: s2, status: 'sold', price: 107500, discount: 0, fin: 'land_home',
       lender: 'Vanderbilt Mortgage', openedDaysAgo: 30, soldDaysAgo: 3,
-      items: [['Delivery & setup (triple)', 7200, 4900, 1], ['Heat pump', 5600, 3900, 1], ['Deck 10x12', 3200, 1800, 1]],
+      items: [['Delivery & setup — triple-wide', 7200, 4900, 1], ['Heat pump', 5600, 3900, 1], ['Deck', 3200, 1800, 1]],
       payments: [['deposit', 3000, 'check', '#5510', 30], ['payment', 122148.75, 'lender', 'Vanderbilt funding', 3]],
       trade: ['2004 Fleetwood single-wide', 12000, 7500],
     });
@@ -200,12 +200,12 @@ function seedDemo(file) {
     const overhead = (days, amount, payee, category, memo) =>
       expense.run(today(-days), amount, String(checkNo++), null, payee, category, memo, null, null, mgr);
 
-    job(33, 3100, v.setup, 'Nguyen', 'Delivery & setup (single)', 'Set & level, tie-downs');
+    job(33, 3100, v.setup, 'Nguyen', 'Delivery & setup — single-wide', 'Set & level, tie-downs');
     job(32, 450, v.county, 'Nguyen', 'Permits', 'Placement permit');
-    job(2, 4900, v.setup, 'Adams', 'Delivery & setup (triple)', 'Triple-wide set');
+    job(2, 4900, v.setup, 'Adams', 'Delivery & setup — triple-wide', 'Triple-wide set');
     job(1, 4250, v.hvac, 'Adams', 'Heat pump', '3-ton heat pump install (extra line set)');
-    job(1, 1800, v.deck, 'Adams', 'Deck 10x12', 'Treated deck');
-    job(3, 2100, v.setup, 'Rivera', 'Delivery & setup (double)', 'Deposit on setup');
+    job(1, 1800, v.deck, 'Adams', 'Deck', 'Treated deck');
+    job(3, 2100, v.setup, 'Rivera', 'Delivery & setup — double-wide', 'Deposit on setup');
     for (const [days, amount, payee, cat, memo] of [
       [58, 2500, 'Oakline Properties', 'rent', 'Lot lease'], [28, 2500, 'Oakline Properties', 'rent', 'Lot lease'],
       [50, 410.22, 'SWEPCO', 'utilities', 'Office power'], [20, 388.9, 'SWEPCO', 'utilities', 'Office power'],
@@ -213,6 +213,43 @@ function seedDemo(file) {
       [35, 320, 'Office Depot', 'office', 'Printer, paper'],
     ]) overhead(days, amount, payee, cat, memo);
     db.prepare("UPDATE settings SET value = ? WHERE key = 'next_check_number'").run(String(checkNo));
+
+    // Default vendors on the jobs list.
+    const jobVendor = db.prepare('UPDATE addon_catalog SET vendor_id = ? WHERE name LIKE ?');
+    jobVendor.run(v.hvac, 'Central A/C'); jobVendor.run(v.hvac, 'Heat pump');
+    jobVendor.run(v.setup, 'Delivery & setup%'); jobVendor.run(v.deck, 'Deck'); jobVendor.run(v.deck, 'Steps / porch');
+    jobVendor.run(v.county, 'Permits');
+
+    // A credit application, lender submissions and stips for a couple of customers.
+    const appData = (o) => JSON.stringify(o);
+    db.prepare('INSERT INTO credit_apps (customer_id, data, ssn_enc, updated_by) VALUES (?, ?, ?, ?)').run(
+      cids.Rivera,
+      appData({
+        has_co: true, a_first_name: 'Jordan', a_last_name: 'Rivera', a_phone: '(903) 555-0100', a_dob: '1986-03-14',
+        a_marital: 'Married', a_dependents: 2, a_address: '100 Oak St', a_city: 'Tyler', a_state: 'TX', a_zip: '75710',
+        a_years_at_address: 4, a_housing: 'Rent', a_housing_payment: 1150, a_employer: 'Tyler ISD', a_position: 'Bus driver',
+        a_years_employed: 6, a_monthly_income: 3400, a_debt_auto: 420, a_debt_cards: 85, a_bankruptcy: 'None',
+        c_first_name: 'Taylor', c_last_name: 'Rivera', c_dob: '1988-07-02', c_employer: 'UT Health Tyler', c_position: 'CNA',
+        c_years_employed: 3, c_monthly_income: 2600, c_debt_cards: 60,
+        home_desc: '2026 Clayton The Anniversary — stock #PH-1001', home_price: 93400, down_payment: 5000,
+        down_payment_source: 'Savings', land_type: 'Land I own', land_address: '5 acres off FM 2767',
+        ref1_name: 'Maria Lopez', ref1_phone: '(903) 555-0190', ref1_relation: 'Sister',
+      }),
+      null,
+      s1
+    );
+    db.prepare('INSERT INTO credit_apps (customer_id, data, updated_by) VALUES (?, ?, ?)').run(
+      cids.Thompson,
+      appData({ a_first_name: 'Avery', a_last_name: 'Thompson', a_monthly_income: 7200, a_debt_auto: 610, down_payment: 15000, land_type: 'Land I am buying' }),
+      s2
+    );
+    const sub = db.prepare(`INSERT INTO lender_submissions (customer_id, lender, submitted_on, status, amount_requested, amount_approved, rate, term_months, payment, conditions, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    sub.run(cids.Rivera, '21st Mortgage', today(-5), 'conditional', 95000, 92000, 8.99, 240, 827.14, 'Two paystubs each, proof of land ownership', s1);
+    sub.run(cids.Rivera, 'Triad Financial', today(-5), 'pending', 95000, null, null, null, null, null, s1);
+    sub.run(cids.Brooks, 'Triad Financial', today(-8), 'submitted', 88000, null, null, null, null, null, s2);
+    const doc = db.prepare('INSERT INTO customer_documents (customer_id, doc_type, received_on, received_by) VALUES (?, ?, ?, ?)');
+    for (const d of ['photo_id', 'co_photo_id', 'signed_app', 'land_deed']) doc.run(cids.Rivera, d, today(-5), s1);
   })();
 
   // Post commissions exactly as the app would, then a commission check to Riley.

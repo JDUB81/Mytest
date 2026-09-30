@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/print.css">
+</head>
+<body>
+<div class="no-print toolbar">
+  <button onclick="window.print()">Print</button>
+  <a href="/customers/<%= customer.id %>/credit">Edit application</a>
+  <a href="/customers/<%= customer.id %>">Back to customer</a>
+  <% if (!blank) { %><a href="?blank_ssn=1">Print with SSN left blank</a><% } else { %><a href="?">Include SSN</a><% } %>
+</div>
+<% var d = app.data; var v = function (k) { return d[k] === undefined || d[k] === null || d[k] === '' ? '' : d[k]; };
+   var money = function (k) { return v(k) === '' ? '' : Number(v(k)).toLocaleString('en-US', { style: 'currency', currency: 'USD' }); };
+   var show = function (f, key) { return f.type === 'money' ? money(key) : f.type === 'date' ? (v(key) ? formatDate(v(key)) : '') : v(key); }; %>
+<div class="sheet credit-sheet">
+  <header class="letterhead">
+    <div>
+      <div class="biz"><%= settings.business_name %></div>
+      <% if (settings.business_address) { %><div class="notes"><%= settings.business_address %></div><% } %>
+      <div><%= [settings.business_phone, settings.business_email].filter(Boolean).join(' · ') %></div>
+    </div>
+    <div class="doc-title"><div class="h">Credit Application</div><div>Manufactured Home Purchase</div><div><%= formatDate(today()) %></div></div>
+  </header>
+
+  <table class="lines app-table">
+    <thead><tr><th style="width:28%"></th><th>Applicant</th><th><%= d.has_co ? 'Co-applicant' : 'Co-applicant (none)' %></th></tr></thead>
+    <tbody>
+      <tr><td>Social Security #</td><td class="mono"><%= blank ? '' : (app.ssn || '') %></td><td class="mono"><%= blank || !d.has_co ? '' : (app.co_ssn || '') %></td></tr>
+      <% PERSON_FIELDS.forEach(function (f) { %>
+        <% if (f.section) { %><tr class="sub"><td colspan="3"><%= f.section %></td></tr><% } else { %>
+          <tr><td><%= f.label %></td><td><%= show(f, 'a_' + f.key) %></td><td><%= d.has_co ? show(f, 'c_' + f.key) : '' %></td></tr>
+        <% } %>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <table class="lines app-table">
+    <tbody>
+      <% PURCHASE_FIELDS.forEach(function (f) { %>
+        <% if (f.section) { %><tr class="sub"><td colspan="2"><%= f.section %></td></tr><% } else { %>
+          <tr><td style="width:28%"><%= f.label %></td><td><%= show(f, f.key) %></td></tr>
+        <% } %>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <p class="terms">
+    <strong>Authorization.</strong> Everything I have stated in this application is correct to the best of my knowledge.
+    I authorize <%= settings.business_name %> and any lender to whom this application is submitted to obtain consumer
+    credit reports and to verify my employment, income, residence and other information given here, now and for the
+    purpose of reviewing, updating or collecting any resulting account. I understand the lender will keep this
+    application whether or not it is approved.
+  </p>
+
+  <div class="signatures">
+    <div><div class="line"></div>Applicant signature · Date</div>
+    <div><div class="line"></div>Co-applicant signature · Date</div>
+    <div><div class="line"></div>Dealer representative · Date</div>
+  </div>
+</div>
+</body>
+</html>

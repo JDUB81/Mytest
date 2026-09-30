@@ -54,6 +54,103 @@
   </section>
 </div>
 
+<section class="card" id="credit">
+  <div class="card-head">
+    <h2>Credit &amp; max budget</h2>
+    <div class="actions">
+      <a class="btn <%= creditApp ? '' : 'primary' %>" href="/customers/<%= customer.id %>/credit"><%= creditApp ? 'Edit credit application' : 'Start credit application' %></a>
+      <% if (creditApp) { %><a class="btn" href="/customers/<%= customer.id %>/credit/print" target="_blank" rel="noopener">Print application</a><% } %>
+    </div>
+  </div>
+  <% if (!creditApp) { %>
+    <p class="muted">No credit application yet. Starting one copies in this customer's contact, co-buyer, land and home details. Once income and debts are entered, their max budget appears here.</p>
+  <% } else if (!budget.best) { %>
+    <p class="muted">Application saved <%= formatDate(creditApp.updated_at) %><%= creditApp.hasSsn ? ' · SSN on file' : '' %>. Enter monthly income on the application to estimate a max budget.</p>
+  <% } else { %>
+    <div class="stats">
+      <div class="stat"><span class="num"><%= formatMoney(budget.best.maxPrice) %></span><span>Max budget (<%= budget.best.profile.name %>)</span></div>
+      <div class="stat"><span class="num"><%= formatMoney(budget.best.payment) %>/mo</span><span>Max home payment</span></div>
+      <div class="stat"><span class="num"><%= formatMoney(budget.best.income) %>/mo</span><span>Household income</span></div>
+      <div class="stat"><span class="num"><%= formatMoney(budget.best.debts) %>/mo</span><span>Other debts</span></div>
+    </div>
+    <div class="table-wrap">
+    <table class="compact">
+      <thead><tr><th>Lender</th><th class="num">Max DTI</th><th class="num">Rate / term</th><th class="num">Payment</th><th class="num">Loan</th><th class="num">Down</th><th class="num">Max budget</th></tr></thead>
+      <tbody>
+      <% budget.results.forEach(function (r) { %>
+        <tr>
+          <td><%= r.profile.name %></td>
+          <td class="num"><%= r.profile.dti_max %>%<%= r.profile.pti_max ? ' · PTI ' + r.profile.pti_max + '%' : '' %></td>
+          <td class="num"><%= r.profile.rate %>% · <%= Math.round(r.profile.term_months / 12 * 10) / 10 %> yr</td>
+          <td class="num"><%= formatMoney(r.payment) %></td>
+          <td class="num"><%= formatMoney(r.loan) %></td>
+          <td class="num"><%= formatMoney(r.down) %></td>
+          <td class="num"><strong><%= formatMoney(r.maxPrice) %></strong><%= r.limitedByDown ? ' *' : '' %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <p class="hint">Payment = (max DTI × income) − other debts − lot rent − <%= formatMoney(budget.insuranceMonthly) %>/mo insurance estimate. Max budget = the loan that payment supports + down payment<%= budget.results.some(function (r) { return r.limitedByDown; }) ? '; * limited by the minimum down payment' : '' %>. These are estimates, not lender decisions.<% if (isManager) { %> <a href="/settings/lenders">Edit lender rules</a><% } %></p>
+    <h3>In-stock homes that fit<%= customer.desired_bedrooms ? ' (' + customer.desired_bedrooms + '+ bedrooms)' : '' %></h3>
+    <% if (!homesThatFit.length) { %><p class="muted">No available homes at or under <%= formatMoney(budget.best.maxPrice) %>.</p><% } else { %>
+      <ul class="plain">
+        <% homesThatFit.forEach(function (h) { %>
+          <li><a href="/inventory/<%= h.id %>">#<%= h.stock_number %></a> <%= h.year || '' %> <%= h.manufacturer %> <%= h.model %> · <%= h.bedrooms ?? '?' %> bd / <%= h.bathrooms ?? '?' %> ba · <strong><%= formatMoney(h.price) %></strong>
+            <span class="small muted">(<%= formatMoney(budget.best.maxPrice - h.price) %> under max)</span></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  <% } %>
+</section>
+
+<div class="grid-2">
+  <section class="card" id="lenders">
+    <h2>Lender submissions</h2>
+    <% if (!submissions.length) { %><p class="muted">Not sent to any lender yet.</p><% } else { %>
+      <% submissions.forEach(function (sub) { %>
+        <details class="submission status-box-<%= sub.status %>">
+          <summary>
+            <strong><%= sub.lender %></strong> <span class="app-status app-<%= sub.status %>"><%= APPLICATION_STATUSES[sub.status] %></span>
+            <span class="small muted">sent <%= formatDate(sub.submitted_on) %><%= sub.amount_approved ? ' · approved ' + formatMoney(sub.amount_approved) : '' %><%= sub.rate ? ' @ ' + sub.rate + '%' : '' %><%= sub.term_months ? ' / ' + sub.term_months + ' mo' : '' %><%= sub.payment ? ' · ' + formatMoney(sub.payment) + '/mo' : '' %></span>
+          </summary>
+          <form method="post" action="/customers/<%= customer.id %>/submissions/<%= sub.id %>" class="submission-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label>Status <select name="status"><% Object.keys(APPLICATION_STATUSES).forEach(function (k) { %><option value="<%= k %>" <%= sub.status === k ? 'selected' : '' %>><%= APPLICATION_STATUSES[k] %></option><% }) %></select></label>
+            <label>Requested ($) <input name="amount_requested" inputmode="decimal" value="<%= sub.amount_requested ?? '' %>"></label>
+            <label>Approved ($) <input name="amount_approved" inputmode="decimal" value="<%= sub.amount_approved ?? '' %>"></label>
+            <label>Rate (%) <input name="rate" inputmode="decimal" value="<%= sub.rate ?? '' %>"></label>
+            <label>Term (months) <input name="term_months" inputmode="numeric" value="<%= sub.term_months ?? '' %>"></label>
+            <label>Payment ($/mo) <input name="payment" inputmode="decimal" value="<%= sub.payment ?? '' %>"></label>
+            <label class="span-all">Conditions / stips <input name="conditions" value="<%= sub.conditions || '' %>"></label>
+            <label class="span-all">Notes <input name="notes" value="<%= sub.notes || '' %>"></label>
+            <button class="btn" type="submit">Update</button>
+          </form>
+        </details>
+      <% }) %>
+    <% } %>
+    <form method="post" action="/customers/<%= customer.id %>/submissions" class="inline-form new-submission">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input name="lender" list="lender-list" placeholder="Lender (e.g. 21st Mortgage)" required>
+      <datalist id="lender-list"><% lenderNames.concat(['21st Mortgage', 'Triad Financial', 'Vanderbilt Mortgage', 'CountryPlace Mortgage', 'Cascade Financial', 'ELT / Credit Human']).filter(function (n, i, a) { return a.indexOf(n) === i; }).forEach(function (n) { %><option><%= n %></option><% }) %></datalist>
+      <input type="date" name="submitted_on" value="<%= today() %>" aria-label="Date sent">
+      <input name="amount_requested" inputmode="decimal" placeholder="Amount requested" class="short">
+      <button class="btn" type="submit">Record submission</button>
+    </form>
+  </section>
+
+  <section class="card" id="documents">
+    <h2>Documents <span class="small muted"><%= Object.keys(documents).length %> of <%= Object.keys(DOCUMENT_TYPES).length %></span></h2>
+    <form method="post" action="/customers/<%= customer.id %>/documents" class="doc-list">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% Object.keys(DOCUMENT_TYPES).forEach(function (k) { var d = documents[k]; %>
+        <label class="check"><input type="checkbox" name="docs" value="<%= k %>" <%= d ? 'checked' : '' %>> <span><%= DOCUMENT_TYPES[k] %><% if (d) { %> <span class="small muted">— <%= formatDate(d.received_on) %><%= d.full_name ? ', ' + d.full_name : '' %></span><% } %></span></label>
+      <% }) %>
+      <button class="btn" type="submit">Save checklist</button>
+    </form>
+  </section>
+</div>
+
 <section class="card">
   <h2>Homes &amp; deals</h2>
   <% if (!deals.length) { %>

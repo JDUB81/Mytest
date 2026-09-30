@@ -1,33 +1,45 @@
 <%- include('partials/header') %>
-<p class="crumb"><a href="/settings">Settings</a> /</p>
-<h1>Add-on price list</h1>
-<p class="muted">The <strong>price</strong> is what the customer pays. The <strong>allotted cost</strong> is the budget for the job: it counts toward the deal's gross profit, and checks you write for that job are measured against it. Both can be changed on each deal.</p>
+<div class="page-head">
+  <div><p class="crumb"><a href="/settings">Settings</a> /</p><h1>Jobs &amp; add-ons</h1></div>
+  <div class="actions"><a class="btn" href="/books/vendors">Vendors</a></div>
+</div>
+<p class="muted">One list used on every deal. <strong>Price</strong> is what the customer pays; <strong>allotted cost</strong> is the budget for the job. Checks written for the job are measured against it, and it counts toward gross profit. Picking a job on a deal fills both in, and both can still be changed on that deal. The <strong>default vendor</strong> is pre-selected when you pay for that job.</p>
+<% var missing = addons.filter(function (a) { return a.active && !a.price; }).length; %>
+<% if (missing) { %><div class="flash flash-error"><%= missing %> job<%= missing === 1 ? ' has' : 's have' %> no price yet. Fill in price and cost below so they prefill on deals.</div><% } %>
 
 <form method="post" action="/settings/addons" class="card addon-row addon-new">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <label>New add-on <input name="name" placeholder="e.g. Central A/C 3-ton" required></label>
-  <label>Price ($) <input name="price" inputmode="decimal" required></label>
-  <label>Allotted cost ($) <input name="cost" inputmode="decimal" required></label>
+  <label>New job <input name="name" placeholder="e.g. Central A/C 3-ton" required></label>
+  <label>Category <select name="category"><% JOB_CATEGORIES.forEach(function (c) { %><option><%= c %></option><% }) %></select></label>
+  <label>Price ($) <input name="price" inputmode="decimal"></label>
+  <label>Allotted cost ($) <input name="cost" inputmode="decimal"></label>
+  <label>Default vendor <select name="vendor_id"><option value="">—</option><% vendors.forEach(function (v) { %><option value="<%= v.id %>"><%= v.name %></option><% }) %></select></label>
   <label class="check"><input type="checkbox" name="taxable" value="1" checked> Taxable</label>
   <button class="btn primary" type="submit">Add</button>
 </form>
 
-<% if (!addons.length) { %>
-  <div class="card muted">No add-ons yet. Add the options you sell most, like delivery &amp; setup, central A/C, skirting, steps and decks.</div>
-<% } else { %>
-  <div class="card">
-    <% addons.forEach(function (a) { %>
-      <form method="post" action="/settings/addons/<%= a.id %>" class="addon-row <%= a.active ? '' : 'inactive-row' %>">
+<% var groups = {}; addons.forEach(function (a) { var c = a.active ? (a.category || 'Other') : 'Hidden'; (groups[c] = groups[c] || []).push(a); });
+   var order = JOB_CATEGORIES.concat(['Hidden']).filter(function (c) { return groups[c]; }); %>
+<% order.forEach(function (cat) { %>
+  <section class="card">
+    <h2><%= cat %></h2>
+    <div class="addon-head small muted"><span>Job</span><span>Category</span><span>Price</span><span>Cost</span><span>Margin</span><span>Default vendor</span><span></span></div>
+    <% groups[cat].forEach(function (a) { %>
+      <form method="post" action="/settings/addons/<%= a.id %>" class="addon-row <%= a.active ? '' : 'inactive-row' %> <%= a.active && !a.price ? 'needs-price' : '' %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input name="name" value="<%= a.name %>" aria-label="Name" required>
-        <label class="inline-label">$ <input name="price" inputmode="decimal" value="<%= a.price %>" aria-label="Price"></label>
-        <label class="inline-label">cost $ <input name="cost" inputmode="decimal" value="<%= a.cost %>" aria-label="Allotted cost"></label>
-        <span class="small muted margin-cell"><%= a.price ? Math.round((a.price - a.cost) / a.price * 100) + '% margin' : '' %></span>
-        <label class="check small"><input type="checkbox" name="taxable" value="1" <%= a.taxable ? 'checked' : '' %>> Taxable</label>
+        <select name="category" aria-label="Category"><% JOB_CATEGORIES.forEach(function (c) { %><option <%= (a.category || 'Other') === c ? 'selected' : '' %>><%= c %></option><% }) %></select>
+        <input name="price" inputmode="decimal" value="<%= a.price || '' %>" placeholder="Price" aria-label="Price" class="money-in">
+        <input name="cost" inputmode="decimal" value="<%= a.cost || '' %>" placeholder="Cost" aria-label="Allotted cost" class="money-in">
+        <span class="small muted margin-cell"><%= a.price ? formatMoney(a.price - a.cost) + ' · ' + Math.round((a.price - a.cost) / a.price * 100) + '%' : '' %></span>
+        <select name="vendor_id" aria-label="Default vendor"><option value="">No default vendor</option><% vendors.forEach(function (v) { %><option value="<%= v.id %>" <%= a.vendor_id === v.id ? 'selected' : '' %>><%= v.name %></option><% }) %></select>
+        <label class="check small"><input type="checkbox" name="taxable" value="1" <%= a.taxable ? 'checked' : '' %>> Tax</label>
         <select name="active" aria-label="Status"><option value="1" <%= a.active ? 'selected' : '' %>>Active</option><option value="0" <%= a.active ? '' : 'selected' %>>Hidden</option></select>
         <button class="btn" type="submit">Save</button>
+        <% if (a.times_used) { %><span class="small muted">on <%= a.times_used %> deal<%= a.times_used === 1 ? '' : 's' %></span><% } %>
       </form>
     <% }) %>
-  </div>
-<% } %>
+  </section>
+<% }) %>
+<p class="hint">Changing a job here only affects deals from now on; deals already written keep their own prices and costs.</p>
 <%- include('partials/footer') %>
