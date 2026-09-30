@@ -7,6 +7,7 @@ const path = require('path');
 const { openDatabase } = require('../src/db');
 const { hashPassword } = require('../src/auth');
 const { today } = require('../src/deals');
+const { syncDealCommission, syncGmCommissions, insertEntry } = require('../src/books');
 
 function seedDemo(file) {
   if (path.basename(file) === 'premier-homes.db') {
@@ -40,7 +41,22 @@ function seedDemo(file) {
     setting.run('business_email', 'sales@premierhomes.example');
     setting.run('default_tax_rate', '5.25');
     setting.run('default_doc_fee', '295');
-    setting.run('commission_percent', '20');
+    setting.run('sales_commission_percent', '25');
+    setting.run('gm_commission_percent', '35');
+    setting.run('next_check_number', '2001');
+    db.prepare("UPDATE users SET commission_plan = 'sales', commission_since = ? WHERE role = 'sales'").run(today(-120));
+    db.prepare("UPDATE users SET commission_plan = 'gm', commission_since = ? WHERE id = ?").run(today(-120), mgr);
+
+    const catalogIds = {};
+    const addon = db.prepare('INSERT INTO addon_catalog (name, price, cost, taxable) VALUES (?, ?, ?, ?)');
+    for (const [name, price, cost, taxable] of [
+      ['Delivery & setup (single)', 4800, 3100, 1], ['Delivery & setup (double)', 6500, 4200, 1],
+      ['Delivery & setup (triple)', 7200, 4900, 1], ['Central A/C', 4200, 2900, 1], ['Heat pump', 5600, 3900, 1],
+      ['Vinyl skirting', 2100, 1100, 1], ['Steps (2)', 900, 450, 1], ['Deck 10x12', 3200, 1800, 1],
+      ['Permits', 450, 450, 0], ['Gutters', 850, 400, 1],
+    ]) {
+      catalogIds[name] = addon.run(name, price, cost, taxable).lastInsertRowid;
+    }
 
     const home = db.prepare(`
       INSERT INTO inventory (stock_number, manufacturer, model, year, home_type, serial_number, bedrooms, bathrooms,
@@ -104,7 +120,7 @@ function seedDemo(file) {
       VALUES (@c, @h, @sp, @status, @price, @discount, 5.25, 295, @fin, @lender, @delivery, @addr, @sp, @created, @sold,
         @tradeDesc, @trade, @payoff)
     `);
-    const item = db.prepare('INSERT INTO deal_items (deal_id, description, price, cost, taxable) VALUES (?, ?, ?, ?, ?)');
+    const item = db.prepare('INSERT INTO deal_items (deal_id, description, price, cost, taxable, catalog_id) VALUES (?, ?, ?, ?, ?, ?)');
     const pay = db.prepare(`
       INSERT INTO payments (deal_id, kind, amount, method, reference, received_on, received_by, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -120,29 +136,30 @@ function seedDemo(file) {
         tradeDesc: trade ? trade[0] : null, trade: trade ? trade[1] : 0, payoff: trade ? trade[2] : 0,
       }).lastInsertRowid;
       claim.run(cids[customer], sp, ago(openedDaysAgo), status, ids[stock]);
-      for (const it of items) item.run(id, ...it);
+      for (const it of items) item.run(id, ...it, catalogIds[it[0]] || null);
       for (const p of payments) pay.run(id, p[0], p[1], p[2], p[3], today(-p[4]), sp, ago(p[4]));
       act.run(sp, cids[customer], ids[stock], id, `Assigned stock #${stock} to ${customer} (deal opened)`, ago(openedDaysAgo));
       if (soldDaysAgo !== undefined) act.run(mgr, cids[customer], ids[stock], id, 'Marked sold', ago(soldDaysAgo));
       return id;
     }
 
-    makeDeal({
+    const dealIds = {};
+    dealIds.Rivera = makeDeal({
       customer: 'Rivera', stock: 'PH-1001', sp: s1, status: 'pending', price: 94900, discount: 1500, fin: 'chattel',
       lender: 'Triad Financial', openedDaysAgo: 6,
-      items: [['Delivery & setup', 6500, 4200, 1], ['Central A/C', 4200, 2900, 1], ['Vinyl skirting', 2100, 1100, 1], ['Steps (2)', 900, 450, 1]],
+      items: [['Delivery & setup (double)', 6500, 4200, 1], ['Central A/C', 4200, 2900, 1], ['Vinyl skirting', 2100, 1100, 1], ['Steps (2)', 900, 450, 1]],
       payments: [['deposit', 2500, 'check', '#1042', 6]],
     });
-    makeDeal({
+    dealIds.Nguyen = makeDeal({
       customer: 'Nguyen', stock: 'PH-1002', sp: s1, status: 'sold', price: 57500, fin: 'cash', lender: null,
-      openedDaysAgo: 40, soldDaysAgo: 26,
-      items: [['Delivery & setup', 4800, 3100, 1], ['Permits', 450, 450, 0]],
-      payments: [['deposit', 5000, 'card', 'Visa 4421', 40], ['payment', 61315.75, 'wire', 'Wire 88213', 26]],
+      openedDaysAgo: 50, soldDaysAgo: 35,
+      items: [['Delivery & setup (single)', 4800, 3100, 1], ['Permits', 450, 450, 0]],
+      payments: [['deposit', 5000, 'card', 'Visa 4421', 50], ['payment', 61315.75, 'wire', 'Wire 88213', 35]],
     });
-    makeDeal({
+    dealIds.Adams = makeDeal({
       customer: 'Adams', stock: 'PH-1005', sp: s2, status: 'sold', price: 107500, discount: 0, fin: 'land_home',
       lender: 'Vanderbilt Mortgage', openedDaysAgo: 30, soldDaysAgo: 3,
-      items: [['Delivery & setup', 7200, 4900, 1], ['Heat pump', 5600, 3900, 1], ['Deck 10x12', 3200, 1800, 1]],
+      items: [['Delivery & setup (triple)', 7200, 4900, 1], ['Heat pump', 5600, 3900, 1], ['Deck 10x12', 3200, 1800, 1]],
       payments: [['deposit', 3000, 'check', '#5510', 30], ['payment', 122148.75, 'lender', 'Vanderbilt funding', 3]],
       trade: ['2004 Fleetwood single-wide', 12000, 7500],
     });
@@ -162,7 +179,53 @@ function seedDemo(file) {
     task.run('Order skirting for Rivera home', today(2), cids.Rivera, mgr, mgr, ago(4));
     task.run('Confirm Saturday appointment', today(1), cids.Lee, s2, s2, ago(2));
     task.run('Touch up PH-1008 front door', today(-3), null, mgr, mgr, ago(20));
+
+    // Vendors and checks.
+    const vendor = db.prepare('INSERT INTO vendors (name, trade, contact, phone, address) VALUES (?, ?, ?, ?, ?)');
+    const v = {
+      hvac: vendor.run('Cool Air HVAC', 'HVAC', 'Dale', '(903) 555-0171', '400 Industrial Dr\nTyler, TX 75701').lastInsertRowid,
+      setup: vendor.run('East Texas Home Setup', 'Setup crew', 'Marco', '(903) 555-0172', 'PO Box 88\nWhitehouse, TX 75791').lastInsertRowid,
+      deck: vendor.run('Pine Deck & Steps', 'Decks & steps', 'Lou', '(903) 555-0173', '12 Pine Rd\nLindale, TX 75771').lastInsertRowid,
+      county: vendor.run('Smith County', 'Permits', null, null, '200 E Ferguson\nTyler, TX 75702').lastInsertRowid,
+    };
+    let checkNo = 2001;
+    const itemId = (deal, desc) => db.prepare('SELECT id FROM deal_items WHERE deal_id = ? AND description = ?').get(deal, desc).id;
+    const vendorName = (id) => db.prepare('SELECT name FROM vendors WHERE id = ?').get(id).name;
+    const expense = db.prepare(`
+      INSERT INTO expenses (paid_on, amount, method, check_number, vendor_id, payee_name, category, memo, deal_id, deal_item_id, created_by)
+      VALUES (?, ?, 'check', ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const job = (days, amount, vendorId, deal, desc, memo) =>
+      expense.run(today(-days), amount, String(checkNo++), vendorId, vendorName(vendorId), 'job', memo, dealIds[deal], itemId(dealIds[deal], desc), mgr);
+    const overhead = (days, amount, payee, category, memo) =>
+      expense.run(today(-days), amount, String(checkNo++), null, payee, category, memo, null, null, mgr);
+
+    job(33, 3100, v.setup, 'Nguyen', 'Delivery & setup (single)', 'Set & level, tie-downs');
+    job(32, 450, v.county, 'Nguyen', 'Permits', 'Placement permit');
+    job(2, 4900, v.setup, 'Adams', 'Delivery & setup (triple)', 'Triple-wide set');
+    job(1, 4250, v.hvac, 'Adams', 'Heat pump', '3-ton heat pump install (extra line set)');
+    job(1, 1800, v.deck, 'Adams', 'Deck 10x12', 'Treated deck');
+    job(3, 2100, v.setup, 'Rivera', 'Delivery & setup (double)', 'Deposit on setup');
+    for (const [days, amount, payee, cat, memo] of [
+      [58, 2500, 'Oakline Properties', 'rent', 'Lot lease'], [28, 2500, 'Oakline Properties', 'rent', 'Lot lease'],
+      [50, 410.22, 'SWEPCO', 'utilities', 'Office power'], [20, 388.9, 'SWEPCO', 'utilities', 'Office power'],
+      [45, 650, 'Tyler Morning Telegraph', 'advertising', 'Weekend ad'], [15, 1200, 'Facebook Ads', 'advertising', 'Lead ads'],
+      [35, 320, 'Office Depot', 'office', 'Printer, paper'],
+    ]) overhead(days, amount, payee, cat, memo);
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'next_check_number'").run(String(checkNo));
   })();
+
+  // Post commissions exactly as the app would, then a commission check to Riley.
+  for (const { id } of db.prepare("SELECT id FROM deals WHERE status = 'sold'").all()) syncDealCommission(db, id);
+  syncGmCommissions(db);
+  const riley = db.prepare("SELECT id FROM users WHERE username = 'sales'").get().id;
+  const next = db.prepare("SELECT value FROM settings WHERE key = 'next_check_number'").get().value;
+  const payout = db.prepare(`
+    INSERT INTO expenses (paid_on, amount, method, check_number, payee_user_id, payee_name, category, memo, created_by)
+    VALUES (?, 2000, 'check', ?, ?, 'Riley Carter', 'commission', 'Commission advance', 1)
+  `).run(today(-10), next, riley);
+  insertEntry(db, { user_id: riley, kind: 'payout', amount: -2000, expense_id: payout.lastInsertRowid, note: `Paid by check #${next}`, created_by: 1 });
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'next_check_number'").run(String(Number(next) + 1));
 
   db.close();
   console.log(`Demo data created in ${file}`);

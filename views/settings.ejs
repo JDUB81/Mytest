@@ -17,14 +17,27 @@
     <div class="grid-3">
       <label>Default sales tax rate (%) <input name="default_tax_rate" inputmode="decimal" value="<%= values.default_tax_rate %>"></label>
       <label>Default documentation fee ($) <input name="default_doc_fee" inputmode="decimal" value="<%= values.default_doc_fee %>"></label>
-      <label>Commission (% of gross profit) <input name="commission_percent" inputmode="decimal" value="<%= values.commission_percent %>"></label>
     </div>
     <p class="hint">Defaults apply to new deals; existing deals keep their own numbers. Tax rules for manufactured homes vary by state — confirm your rate with your accountant.</p>
     <label>Deposit / purchase terms (printed on buyer's orders and deposit receipts)
       <textarea name="deposit_terms" rows="3"><%= values.deposit_terms %></textarea></label>
   </fieldset>
+  <fieldset>
+    <legend>Commission &amp; checks</legend>
+    <div class="grid-3">
+      <label>Salesperson commission (% of deal gross profit) <input name="sales_commission_percent" inputmode="decimal" value="<%= values.sales_commission_percent %>"></label>
+      <label>General manager commission (% of monthly net profit) <input name="gm_commission_percent" inputmode="decimal" value="<%= values.gm_commission_percent %>"></label>
+      <label>Next check number <input name="next_check_number" inputmode="numeric" value="<%= values.next_check_number %>"></label>
+    </div>
+    <p class="hint">These are the defaults. Give someone a different rate, or choose who is a salesperson or general manager, under <a href="/users">Staff</a>. Deals already sold keep the rate they were sold at.</p>
+  </fieldset>
   <div class="actions"><button class="btn primary" type="submit">Save settings</button></div>
 </form>
+<section class="card">
+  <h2>Add-on price list</h2>
+  <p>Set up the options you sell (delivery &amp; setup, A/C, skirting…) with a price and an allotted cost. Picking one on a deal fills both in.</p>
+  <a class="btn" href="/settings/addons">Edit price list</a>
+</section>
 <section class="card">
   <h2>Backup</h2>
   <p>Download a complete copy of all customers, inventory, deals, payments and notes. Do this regularly and keep copies somewhere safe (e.g. a USB drive or cloud storage). Photos are stored separately in the uploads folder.</p>

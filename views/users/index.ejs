@@ -9,13 +9,14 @@
 </div>
 <div class="card table-wrap">
   <table>
-    <thead><tr><th>Name</th><th>Username</th><th>Access level</th><th>Status</th><th>Created</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Username</th><th>Access level</th><th>Commission</th><th>Status</th><th>Created</th><th></th></tr></thead>
     <tbody>
     <% users.forEach(function (u) { %>
       <tr class="<%= u.active ? '' : 'inactive' %>">
         <td><%= u.full_name %></td>
         <td><%= u.username %></td>
         <td><span class="role-badge role-<%= u.role %>"><%= ROLES[u.role] %></span></td>
+        <td class="small"><% if (u.commission_plan === 'none') { %>—<% } else { %><%= u.commission_plan === 'gm' ? 'GM' : 'Sales' %> · <%= u.commission_rate ?? defaults[u.commission_plan] %>%<% } %></td>
         <td><%= u.active ? 'Active' : 'Disabled' %></td>
         <td><%= formatDate(u.created_at) %></td>
         <td><a href="/users/<%= u.id %>/edit">Edit</a></td>

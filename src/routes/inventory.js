@@ -7,6 +7,7 @@ const { requireRole } = require('../auth');
 const { INVENTORY_STATUSES, HOME_TYPES, getSettings } = require('../db');
 const { text, number, date } = require('../format');
 const { logActivity } = require('../deals');
+const { syncDealCommission } = require('../books');
 
 const managerOnly = requireRole('manager');
 
@@ -305,6 +306,10 @@ module.exports = function inventoryRoutes(db, { uploadDir }) {
       });
     }
     updateHome.run({ ...values, id: req.home.id });
+    // Dealer cost feeds gross profit, so sold deals on this home need their commission rechecked.
+    for (const d of db.prepare("SELECT id FROM deals WHERE inventory_id = ? AND status = 'sold'").all(req.home.id)) {
+      syncDealCommission(db, d.id, req.user.id);
+    }
     if (req.home.price !== values.price) {
       logActivity(db, {
         userId: req.user.id,

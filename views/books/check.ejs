@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/books/register">Books</a> /</p>
+<div class="page-head">
+  <h1><%= title %> <% if (e.voided_at) { %><span class="status status-cancelled">Void</span><% } %></h1>
+  <div class="actions">
+    <a class="btn" href="/books/checks/<%= e.id %>/print" target="_blank" rel="noopener">Print check</a>
+    <a class="btn primary" href="/books/checks/new">✎ Write another</a>
+  </div>
+</div>
+<% if (e.voided_at) { %><div class="flash flash-error">Voided <%= formatDate(e.voided_at) %> by <%= e.voided_by_name %>: <%= e.void_reason %></div><% } %>
+
+<div class="grid-2">
+  <section class="card">
+    <dl class="details">
+      <dt>Paid to</dt><dd><strong><%= e.payee_name %></strong><% if (e.vendor_id) { %> · <a href="/books/vendors/<%= e.vendor_id %>">vendor history</a><% } %></dd>
+      <dt>Amount</dt><dd><strong><%= formatMoneyCents(e.amount) %></strong></dd>
+      <dt>Date</dt><dd><%= formatDate(e.paid_on) %></dd>
+      <dt>Paid by</dt><dd><%= EXPENSE_METHODS[e.method] %><%= e.check_number ? ' #' + e.check_number : '' %></dd>
+      <dt>Category</dt><dd><%= EXPENSE_CATEGORIES[e.category] || e.category %></dd>
+      <% if (e.deal_id) { %><dt>For</dt><dd><a href="/deals/<%= e.deal_id %>#jobs">Deal #<%= e.deal_id %></a> — <%= e.first_name %> <%= e.last_name %>, #<%= e.stock_number %><%= e.item_description ? ' · ' + e.item_description : ' · Other' %></dd><% } %>
+      <% if (e.memo) { %><dt>Memo</dt><dd><%= e.memo %></dd><% } %>
+      <dt>Entered by</dt><dd><%= e.created_by_name %>, <%= formatDateTime(e.created_at) %></dd>
+    </dl>
+  </section>
+  <% if (financials) { var fin = financials; var line = fin.jobs.lines.find(function (l) { return e.deal_item_id ? l.item && l.item.id === e.deal_item_id : l.key === 'misc'; }); %>
+  <section class="card">
+    <h2>Deal #<%= fin.deal.id %> job budget</h2>
+    <% if (line) { %>
+      <p><strong><%= line.label %></strong>: allotted <%= formatMoneyCents(line.allotted) %>, paid <%= formatMoneyCents(line.paid) %> —
+        <% if (line.over > 0) { %><span class="overdue-text"><%= formatMoneyCents(line.over) %> over</span><% } else { %><%= formatMoneyCents(line.remaining) %> remaining<% } %></p>
+    <% } %>
+    <dl class="details">
+      <dt>All jobs</dt><dd><%= formatMoneyCents(fin.jobs.paid) %> paid of <%= formatMoneyCents(fin.jobs.allotted) %> allotted</dd>
+      <dt>Actual gross profit</dt><dd><%= formatMoneyCents(fin.actualProfit) %></dd>
+      <% if (fin.commission) { %><dt>Commission</dt><dd><%= formatMoneyCents(fin.commission.net) %><%= fin.commission.overrun ? ' (after ' + formatMoneyCents(-fin.commission.overrun) + ' charge-back)' : '' %></dd><% } %>
+    </dl>
+    <a href="/deals/<%= fin.deal.id %>#jobs">Open deal</a>
+  </section>
+  <% } %>
+</div>
+
+<% if (!e.voided_at) { %>
+  <form method="post" action="/books/checks/<%= e.id %>/void" class="danger-zone inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input name="reason" placeholder="Reason for voiding" required>
+    <button class="btn danger" type="submit">Void this payment</button>
+  </form>
+<% } %>
+<%- include('../partials/footer') %>

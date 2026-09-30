@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<p class="crumb"><a href="/settings">Settings</a> /</p>
+<h1>Add-on price list</h1>
+<p class="muted">The <strong>price</strong> is what the customer pays. The <strong>allotted cost</strong> is the budget for the job: it counts toward the deal's gross profit, and checks you write for that job are measured against it. Both can be changed on each deal.</p>
+
+<form method="post" action="/settings/addons" class="card addon-row addon-new">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label>New add-on <input name="name" placeholder="e.g. Central A/C 3-ton" required></label>
+  <label>Price ($) <input name="price" inputmode="decimal" required></label>
+  <label>Allotted cost ($) <input name="cost" inputmode="decimal" required></label>
+  <label class="check"><input type="checkbox" name="taxable" value="1" checked> Taxable</label>
+  <button class="btn primary" type="submit">Add</button>
+</form>
+
+<% if (!addons.length) { %>
+  <div class="card muted">No add-ons yet. Add the options you sell most, like delivery &amp; setup, central A/C, skirting, steps and decks.</div>
+<% } else { %>
+  <div class="card">
+    <% addons.forEach(function (a) { %>
+      <form method="post" action="/settings/addons/<%= a.id %>" class="addon-row <%= a.active ? '' : 'inactive-row' %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input name="name" value="<%= a.name %>" aria-label="Name" required>
+        <label class="inline-label">$ <input name="price" inputmode="decimal" value="<%= a.price %>" aria-label="Price"></label>
+        <label class="inline-label">cost $ <input name="cost" inputmode="decimal" value="<%= a.cost %>" aria-label="Allotted cost"></label>
+        <span class="small muted margin-cell"><%= a.price ? Math.round((a.price - a.cost) / a.price * 100) + '% margin' : '' %></span>
+        <label class="check small"><input type="checkbox" name="taxable" value="1" <%= a.taxable ? 'checked' : '' %>> Taxable</label>
+        <select name="active" aria-label="Status"><option value="1" <%= a.active ? 'selected' : '' %>>Active</option><option value="0" <%= a.active ? '' : 'selected' %>>Hidden</option></select>
+        <button class="btn" type="submit">Save</button>
+      </form>
+    <% }) %>
+  </div>
+<% } %>
+<%- include('partials/footer') %>

@@ -10,7 +10,9 @@ const { logActivity, today } = require('../deals');
 const NUMERIC = {
   default_tax_rate: { max: 30, label: 'Default tax rate' },
   default_doc_fee: { max: 100000, label: 'Default doc fee' },
-  commission_percent: { max: 100, label: 'Commission percent' },
+  sales_commission_percent: { max: 100, label: 'Salesperson commission' },
+  gm_commission_percent: { max: 100, label: 'General manager commission' },
+  next_check_number: { integer: true, max: 99999999, label: 'Next check number' },
 };
 
 module.exports = function settingsRoutes(db) {
@@ -46,6 +48,52 @@ module.exports = function settingsRoutes(db) {
     })();
     req.flash('success', 'Settings saved.');
     res.redirect('/settings');
+  });
+
+  // --- Add-on price list ---------------------------------------------------------
+
+  const catalog = db.prepare('SELECT * FROM addon_catalog ORDER BY active DESC, name');
+
+  function parseAddon(body) {
+    const price = number(body.price, { max: 100000000 });
+    const cost = number(body.cost, { max: 100000000 });
+    return {
+      values: {
+        name: text(body.name, 200),
+        price: price.value ?? 0,
+        cost: cost.value ?? 0,
+        taxable: body.taxable === '1' ? 1 : 0,
+        active: body.active === '0' ? 0 : 1,
+      },
+      error: !text(body.name, 200) ? 'Enter a name.' : price.error || cost.error ? 'Price and cost must be numbers.' : null,
+    };
+  }
+
+  router.get('/addons', (req, res) => {
+    res.render('addons', { title: 'Add-on price list', addons: catalog.all() });
+  });
+
+  router.post('/addons', (req, res) => {
+    const { values, error } = parseAddon(req.body);
+    if (error) {
+      req.flash('error', error);
+      return res.redirect('/settings/addons');
+    }
+    db.prepare('INSERT INTO addon_catalog (name, price, cost, taxable, active) VALUES (@name, @price, @cost, @taxable, @active)').run(values);
+    req.flash('success', `${values.name} added to the price list.`);
+    res.redirect('/settings/addons');
+  });
+
+  router.post('/addons/:id', (req, res) => {
+    const { values, error } = parseAddon(req.body);
+    if (error) {
+      req.flash('error', error);
+      return res.redirect('/settings/addons');
+    }
+    db.prepare('UPDATE addon_catalog SET name = @name, price = @price, cost = @cost, taxable = @taxable, active = @active WHERE id = @id')
+      .run({ ...values, id: Number(req.params.id) });
+    req.flash('success', `${values.name} updated. Deals already written keep their own prices.`);
+    res.redirect('/settings/addons');
   });
 
   // Consistent snapshot of the whole database (safe while the app is running).

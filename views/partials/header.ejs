@@ -18,9 +18,12 @@
     <a href="/deals" class="<%= currentPath.startsWith('/deals') ? 'active' : '' %>">Deals</a>
     <a href="/tasks" class="<%= currentPath.startsWith('/tasks') ? 'active' : '' %>">Tasks<% if (tasksDue) { %> <span class="badge"><%= tasksDue %></span><% } %></a>
     <% if (isManager) { %>
+      <a href="/books" class="<%= currentPath.startsWith('/books') ? 'active' : '' %>">Books</a>
       <a href="/reports" class="<%= currentPath.startsWith('/reports') ? 'active' : '' %>">Reports</a>
       <a href="/users" class="<%= currentPath.startsWith('/users') ? 'active' : '' %>">Staff</a>
       <a href="/settings" class="<%= currentPath.startsWith('/settings') ? 'active' : '' %>">Settings</a>
+    <% } else if (user.commission_plan && user.commission_plan !== 'none') { %>
+      <a href="/my/commissions" class="<%= currentPath.startsWith('/my') ? 'active' : '' %>">My commission</a>
     <% } %>
   </nav>
   <form class="topsearch" method="get" action="/search" role="search">

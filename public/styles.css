@@ -254,3 +254,38 @@ button.link.small { font-size: .78rem; color: var(--muted); text-decoration: und
 .filters select, .filters input:not([type=search]) { width: auto; }
 .filters input[type=search] { width: auto; }
 @media (max-width: 700px) { .filters select, .filters input[type=search] { flex: 1 1 100%; } }
+
+/* ---- Books ---- */
+.books-nav { margin-bottom: 1rem; }
+.addon-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--border); }
+.addon-row:last-child { border-bottom: 0; }
+.addon-row input[name=name] { flex: 2; min-width: 200px; width: auto; }
+.addon-row .inline-label input { width: 110px; }
+.addon-row select { width: auto; }
+.addon-new { align-items: flex-end; }
+.addon-new label { flex: 1; min-width: 140px; }
+.inactive-row { opacity: .6; }
+.margin-cell { min-width: 80px; }
+.item-edit summary { cursor: pointer; color: var(--brand); list-style: none; }
+.item-edit[open] { text-align: left; }
+.item-edit .item-form { margin-top: .5rem; }
+.addon-pick { width: auto; max-width: 100%; flex: 1 1 100%; }
+.job-picker { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; }
+.job-option { flex-direction: row; align-items: center; gap: .6rem; font-weight: 400; padding: .45rem 0; border-bottom: 1px dashed var(--border); flex-wrap: wrap; }
+.job-option:last-of-type { border-bottom: 0; }
+.job-option input { width: auto; }
+.job-name { font-weight: 600; min-width: 180px; }
+.job-nums { color: var(--muted); font-size: .88rem; }
+.payee-types { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.payee-types input { width: auto; }
+.span-2 { grid-column: span 2; }
+@media (max-width: 800px) { .span-2 { grid-column: auto; } }
+.budget-warning { margin: .75rem 0 0; }
+.budget-bar { height: 8px; background: var(--sold-bg); border-radius: 4px; overflow: hidden; margin: .25rem 0 .5rem; }
+.budget-bar span { display: block; height: 100%; background: var(--ok); }
+.budget-bar.over span { background: var(--err); }
+table.compact td, table.compact th { padding: .35rem .5rem; }
+tr.selected-row td { background: var(--bg); font-weight: 600; }
+.job-card h2 { font-size: 1.05rem; }
+
+[hidden] { display: none !important; }

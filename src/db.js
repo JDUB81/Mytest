@@ -50,6 +50,33 @@ const PAYMENT_KINDS = { deposit: 'Deposit', payment: 'Payment', refund: 'Refund'
 const PAYMENT_METHODS = {
   cash: 'Cash', check: 'Check', card: 'Card', ach: 'ACH / bank transfer', wire: 'Wire', lender: 'Lender funding', other: 'Other',
 };
+const COMMISSION_PLANS = {
+  none: 'No commission',
+  sales: 'Salesperson — % of each deal\u2019s gross profit',
+  gm: 'General manager — % of the lot\u2019s monthly net profit',
+};
+
+const EXPENSE_CATEGORIES = {
+  job: 'Deal job cost (setup, HVAC, etc.)',
+  inventory: 'Inventory purchase / freight',
+  commission: 'Commission payout',
+  payroll: 'Payroll',
+  rent: 'Rent / lot lease',
+  utilities: 'Utilities',
+  advertising: 'Advertising',
+  insurance: 'Insurance',
+  maintenance: 'Lot & office maintenance',
+  office: 'Office & supplies',
+  fees: 'Bank & professional fees',
+  taxes: 'Taxes & licenses',
+  other: 'Other overhead',
+};
+// Categories that are NOT overhead: job costs and home costs are already counted in
+// each deal's profit, and commission payouts settle the commission ledger.
+const NON_OVERHEAD = ['job', 'inventory', 'commission'];
+
+const EXPENSE_METHODS = { check: 'Check', ach: 'ACH / transfer', card: 'Card', cash: 'Cash', other: 'Other' };
+
 const NOTE_KINDS = { note: 'Note', call: 'Phone call', text: 'Text', email: 'Email', visit: 'Visit / showing' };
 
 const DEFAULT_SETTINGS = {
@@ -59,7 +86,9 @@ const DEFAULT_SETTINGS = {
   business_email: '',
   default_tax_rate: '0',
   default_doc_fee: '0',
-  commission_percent: '0',
+  sales_commission_percent: '25',
+  gm_commission_percent: '35',
+  next_check_number: '1001',
   deposit_terms:
     'Deposits hold the selected home for the buyer. Refund terms are subject to the purchase agreement.',
 };
@@ -280,6 +309,92 @@ const MIGRATIONS = [
         WHERE id IN (SELECT customer_id FROM inventory WHERE status = 'sold');
     `);
   },
+  (db) => {
+    db.exec(`
+      -- Per-person commission plan: 'none', 'sales' (% of each deal's gross profit)
+      -- or 'gm' (% of the lot's monthly net profit).
+      ALTER TABLE users ADD COLUMN commission_plan TEXT NOT NULL DEFAULT 'none';
+      ALTER TABLE users ADD COLUMN commission_rate REAL;
+      ALTER TABLE users ADD COLUMN commission_since TEXT;
+      UPDATE users SET commission_plan = 'sales', commission_since = date('now', 'localtime') WHERE role = 'sales';
+
+      CREATE TABLE addon_catalog (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        price       REAL NOT NULL DEFAULT 0,
+        cost        REAL NOT NULL DEFAULT 0,
+        taxable     INTEGER NOT NULL DEFAULT 1,
+        active      INTEGER NOT NULL DEFAULT 1,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      ALTER TABLE deal_items ADD COLUMN catalog_id INTEGER REFERENCES addon_catalog(id);
+
+      -- Commission snapshot taken when a deal is sold, so later rate changes don't rewrite history.
+      ALTER TABLE deals ADD COLUMN commission_user_id INTEGER REFERENCES users(id);
+      ALTER TABLE deals ADD COLUMN commission_rate REAL;
+
+      CREATE TABLE vendors (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        trade       TEXT,
+        contact     TEXT,
+        phone       TEXT,
+        email       TEXT,
+        address     TEXT,
+        notes       TEXT,
+        active      INTEGER NOT NULL DEFAULT 1,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      -- Money going out: checks and other payments.
+      CREATE TABLE expenses (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        paid_on       TEXT NOT NULL,
+        amount        REAL NOT NULL CHECK (amount > 0),
+        method        TEXT NOT NULL,
+        check_number  TEXT,
+        vendor_id     INTEGER REFERENCES vendors(id),
+        payee_user_id INTEGER REFERENCES users(id),
+        payee_name    TEXT NOT NULL,
+        category      TEXT NOT NULL,
+        memo          TEXT,
+        deal_id       INTEGER REFERENCES deals(id),
+        deal_item_id  INTEGER REFERENCES deal_items(id),
+        inventory_id  INTEGER REFERENCES inventory(id),
+        created_by    INTEGER REFERENCES users(id),
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        voided_at     TEXT,
+        voided_by     INTEGER REFERENCES users(id),
+        void_reason   TEXT
+      );
+      CREATE INDEX idx_expenses_deal ON expenses(deal_id);
+      CREATE INDEX idx_expenses_paid_on ON expenses(paid_on);
+      CREATE INDEX idx_expenses_vendor ON expenses(vendor_id);
+
+      -- Running commission balance per person. Positive = owed to them.
+      CREATE TABLE commission_entries (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL REFERENCES users(id),
+        kind        TEXT NOT NULL CHECK (kind IN ('earned', 'overrun', 'gm', 'payout', 'adjustment')),
+        amount      REAL NOT NULL,
+        rate        REAL,
+        deal_id     INTEGER REFERENCES deals(id),
+        period      TEXT,
+        expense_id  INTEGER REFERENCES expenses(id),
+        note        TEXT,
+        created_by  INTEGER REFERENCES users(id),
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_commission_user ON commission_entries(user_id);
+      CREATE INDEX idx_commission_deal ON commission_entries(deal_id);
+    `);
+    // The old single commission setting becomes the default rate for salespeople.
+    const old = db.prepare("SELECT value FROM settings WHERE key = 'commission_percent'").get();
+    if (old && Number(old.value) > 0) {
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('sales_commission_percent', ?)").run(old.value);
+    }
+  },
 ];
 
 function migrate(db) {
@@ -329,5 +444,9 @@ module.exports = {
   PAYMENT_KINDS,
   PAYMENT_METHODS,
   NOTE_KINDS,
+  COMMISSION_PLANS,
+  EXPENSE_CATEGORIES,
+  EXPENSE_METHODS,
+  NON_OVERHEAD,
   DEFAULT_SETTINGS,
 };

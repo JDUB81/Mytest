@@ -124,8 +124,9 @@ test('reports total sales, profit and commission; exports are CSV with formulas 
   const home = addHome(db, { price: 100000, invoice_cost: 70000, freight_cost: 3000 });
   const customer = addCustomer(db, { first_name: '=HYPERLINK("evil")' });
   const boss = await as(app, 'boss');
-  await post(boss, '/settings', { business_name: 'Premier Homes', default_tax_rate: '0', default_doc_fee: '0', commission_percent: '25' });
-  const deal = await openDeal(boss, db, home, customer);
+  await post(boss, '/settings', { business_name: 'Premier Homes', default_tax_rate: '0', default_doc_fee: '0', sales_commission_percent: '25', gm_commission_percent: '35', next_check_number: '1001' });
+  const sam = await as(app, 'sam');
+  const deal = await openDeal(sam, db, home, customer);
   await post(boss, `/deals/${deal.id}/sold`);
 
   const page = await boss.get('/reports');
@@ -150,7 +151,9 @@ test('settings are validated and appear on printed documents', async () => {
     business_phone: '903-555-0199',
     default_tax_rate: '0',
     default_doc_fee: '0',
-    commission_percent: '0',
+    sales_commission_percent: '25',
+    gm_commission_percent: '35',
+    next_check_number: '1001',
     deposit_terms: 'Deposits are refundable within 3 days.',
   });
   const home = addHome(db);

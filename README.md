@@ -38,6 +38,21 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 - Managers mark deals sold, or cancel them. A cancelled deal returns the home to inventory and keeps its history
 - Gross profit per deal (**managers only**)
 
+**Books: check writing & job costs (managers only)**
+- Add-on price list: preset price and allotted cost for each option. Picking one on a deal fills both in, and both stay editable
+- Write checks to vendors, staff or anyone else. For a deal, pick the job (e.g. Central A/C) and see what's allotted, already paid and remaining, with a live warning if you're going over
+- Print checks (amount in words, check-on-top layout with two record stubs); check numbers count up automatically
+- Job costs on every deal: allotted vs. paid per job, actual gross profit, and a list of every deal with any over-budget jobs highlighted
+- Vendors with payment history; check register filterable by month, category and payee; overhead categories (rent, utilities, advertising…)
+- Monthly profit & loss: sales, gross profit, over-budget job costs, salesperson commissions, overhead, net profit
+
+**Commission ledgers**
+- Each staff member has a plan: **Salesperson** (default 25% of each deal's gross profit, earned when the deal is sold) or **General manager** (default 35% of the lot's net profit for each completed month). Rates can differ per person
+- When checks for a job go over its allotted cost, the salesperson's rate × the overrun is charged back to their balance, which comes off future commissions
+- A general manager's closed month is recalculated if it changes later, and the difference is posted to their balance
+- Pay commissions by check from the ledger; voiding a check restores the balance. Manual adjustments need a reason
+- Salespeople see their own ledger under **My commission** (no profit figures shown)
+
 **Management (managers only)**
 - Reports: homes sold, sales, gross profit, commission by salesperson, money collected, 12-month trend, lead-source close rates, pipeline, inventory aging
 - CSV exports of customers, inventory, sales and payments (open in Excel or Google Sheets)
@@ -59,6 +74,8 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 | Mark a deal sold, cancel a deal, record refunds, void payments, edit sold deals | ✅ | ❌ |
 | Delete customers | ✅ | ❌ |
 | Reports, exports, settings, activity log, backups | ✅ | ❌ |
+| Books: checks, vendors, job costs, P&L, commission ledgers, price list | ✅ | ❌ |
+| See own commission ledger | ✅ | ✅ |
 | Staff logins and access levels | ✅ | ❌ |
 
 ## Running it for real

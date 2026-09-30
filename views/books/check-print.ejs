@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · <%= settings.business_name %></title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/print.css">
+</head>
+<body>
+<div class="no-print toolbar">
+  <button onclick="window.print()">Print</button>
+  <a href="/books/checks/<%= e.id %>">Back</a>
+  <span class="small">Top section lines up with a standard check-on-top business check. The stubs below are for your records.</span>
+</div>
+<div class="sheet check-sheet">
+  <% if (e.voided_at) { %><div class="void-stamp">VOID — <%= e.void_reason %></div><% } %>
+  <section class="check-face">
+    <div class="check-top">
+      <div><div class="biz-small"><%= settings.business_name %></div><div class="notes small"><%= settings.business_address %></div></div>
+      <div class="check-no"><%= e.check_number ? 'No. ' + e.check_number : '' %><div class="small">Date: <strong><%= formatDate(e.paid_on) %></strong></div></div>
+    </div>
+    <div class="check-payee">
+      <span class="lbl">Pay to the order of</span>
+      <span class="line-fill"><strong><%= e.payee_name %></strong></span>
+      <span class="amount-box"><%= formatMoneyCents(e.amount) %></span>
+    </div>
+    <div class="check-words"><span class="line-fill"><%= words %> dollars</span></div>
+    <% if (e.vendor_address) { %><div class="check-address notes small"><%= e.vendor_address %></div><% } %>
+    <div class="check-bottom">
+      <div>Memo: <span class="line-fill small"><%= e.memo || (e.deal_id ? 'Deal #' + e.deal_id + (e.item_description ? ' — ' + e.item_description : '') : '') %></span></div>
+      <div class="sig"><div class="line"></div>Authorized signature</div>
+    </div>
+  </section>
+  <% [1, 2].forEach(function () { %>
+  <section class="check-stub">
+    <table class="lines">
+      <tbody>
+        <tr><td>Paid to</td><td><strong><%= e.payee_name %></strong></td><td class="num"><%= e.check_number ? 'Check #' + e.check_number : EXPENSE_METHODS[e.method] %></td></tr>
+        <tr><td>Date</td><td><%= formatDate(e.paid_on) %></td><td class="num"><strong><%= formatMoneyCents(e.amount) %></strong></td></tr>
+        <tr><td>For</td><td colspan="2"><%= EXPENSE_CATEGORIES[e.category] %><% if (e.deal_id) { %> — Deal #<%= e.deal_id %>, <%= e.first_name %> <%= e.last_name %>, stock #<%= e.stock_number %><%= e.item_description ? ' — ' + e.item_description : '' %><% } %></td></tr>
+        <% if (e.memo) { %><tr><td>Memo</td><td colspan="2"><%= e.memo %></td></tr><% } %>
+      </tbody>
+    </table>
+  </section>
+  <% }) %>
+</div>
+</body>
+</html>

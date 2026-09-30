@@ -3,6 +3,7 @@ const { requireRole } = require('../auth');
 const { FINANCING_TYPES, PAYMENT_KINDS, PAYMENT_METHODS } = require('../db');
 const { text, number, date, choice } = require('../format');
 const { logActivity, loadDealBundle, dealTotals, round2, today } = require('../deals');
+const { dealFinancials, syncDealCommission } = require('../books');
 
 const managerOnly = requireRole('manager');
 const MONEY = { max: 100000000 };
@@ -19,7 +20,13 @@ module.exports = function dealRoutes(db) {
       updated_at = datetime('now')
     WHERE id = @id
   `);
-  const insertItem = db.prepare('INSERT INTO deal_items (deal_id, description, price, cost, taxable) VALUES (?, ?, ?, ?, ?)');
+  const insertItem = db.prepare(
+    'INSERT INTO deal_items (deal_id, description, price, cost, taxable, catalog_id) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  const updateItem = db.prepare('UPDATE deal_items SET description = ?, price = ?, cost = ?, taxable = ? WHERE id = ? AND deal_id = ?');
+  const itemHasPayments = db.prepare('SELECT 1 FROM expenses WHERE deal_item_id = ? AND voided_at IS NULL LIMIT 1');
+  const catalogItem = db.prepare('SELECT * FROM addon_catalog WHERE id = ?');
+  const activeCatalog = db.prepare('SELECT * FROM addon_catalog WHERE active = 1 ORDER BY name');
   const deleteItem = db.prepare('DELETE FROM deal_items WHERE id = ? AND deal_id = ?');
   const selectItem = db.prepare('SELECT * FROM deal_items WHERE id = ? AND deal_id = ?');
   const insertPayment = db.prepare(`
@@ -130,11 +137,15 @@ module.exports = function dealRoutes(db) {
 
   router.get('/:id', loadDeal, (req, res) => {
     const { deal } = req.bundle;
+    const isManager = req.user.role === 'manager';
+    const catalog = activeCatalog.all().map((c) => (isManager ? c : { ...c, cost: undefined }));
     res.render('deals/show', {
       title: `Deal #${deal.id}`,
       ...viewBundle(req),
       notes: notesFor.all(deal.id),
       activity: activityFor.all(deal.id),
+      catalog,
+      financials: isManager ? dealFinancials(db, deal.id) : null,
     });
   });
 
@@ -199,21 +210,33 @@ module.exports = function dealRoutes(db) {
         message: changes.length ? `Updated deal: ${changes.join(', ')}` : 'Updated deal details',
       });
     })();
+    syncDealCommission(db, deal.id, req.user.id);
     req.flash('success', 'Deal updated.');
     res.redirect(`/deals/${deal.id}`);
   });
 
   router.post('/:id/items', loadDeal, editable, (req, res) => {
     const { deal } = req.bundle;
-    const description = text(req.body.description, 200);
-    const price = number(req.body.price, { min: -MONEY.max, max: MONEY.max });
-    const cost = req.user.role === 'manager' ? number(req.body.cost, MONEY) : { value: null };
+    // A price-list pick fills in the defaults; anything typed on the form wins.
+    const preset = req.body.catalog_id ? catalogItem.get(Number(req.body.catalog_id)) : null;
+    const description = text(req.body.description, 200) || (preset && preset.name);
+    let price = number(req.body.price, { min: -MONEY.max, max: MONEY.max });
+    if (price.value === null && preset) price = { value: preset.price };
+    let cost;
+    if (req.user.role === 'manager') {
+      cost = number(req.body.cost, MONEY);
+      if (cost.value === null && preset) cost = { value: preset.cost };
+    } else {
+      // Sales associates never see or set cost; the price list's allotment applies.
+      cost = { value: preset ? preset.cost : null };
+    }
     if (!description || price.error || price.value === null || cost.error) {
       req.flash('error', 'Enter a description and a valid price for the add-on.');
       return res.redirect(`/deals/${deal.id}#items`);
     }
-    insertItem.run(deal.id, description, price.value, cost.value, req.body.taxable === '1' ? 1 : 0);
+    insertItem.run(deal.id, description, price.value, cost.value, req.body.taxable === '1' ? 1 : 0, preset ? preset.id : null);
     touchDeal.run(deal.id);
+    syncDealCommission(db, deal.id, req.user.id);
     logActivity(db, {
       userId: req.user.id,
       customerId: deal.customer_id,
@@ -224,12 +247,45 @@ module.exports = function dealRoutes(db) {
     res.redirect(`/deals/${deal.id}#items`);
   });
 
+  router.post('/:id/items/:itemId', loadDeal, editable, (req, res) => {
+    const { deal } = req.bundle;
+    const item = selectItem.get(Number(req.params.itemId), deal.id);
+    if (!item) return res.redirect(`/deals/${deal.id}#items`);
+    const description = text(req.body.description, 200) || item.description;
+    const price = number(req.body.price, { min: -MONEY.max, max: MONEY.max });
+    const cost = req.user.role === 'manager' ? number(req.body.cost, MONEY) : { value: item.cost };
+    if (price.error || price.value === null || cost.error) {
+      req.flash('error', 'Enter a valid price.');
+      return res.redirect(`/deals/${deal.id}#items`);
+    }
+    const taxable = req.body.taxable === '1' ? 1 : 0;
+    updateItem.run(description, price.value, cost.value, taxable, item.id, deal.id);
+    touchDeal.run(deal.id);
+    const changes = [];
+    if (price.value !== item.price) changes.push(`price ${usd(item.price)} → ${usd(price.value)}`);
+    if (cost.value !== item.cost) changes.push(`allotted cost ${item.cost == null ? 'none' : usd(item.cost)} → ${cost.value == null ? 'none' : usd(cost.value)}`);
+    logActivity(db, {
+      userId: req.user.id,
+      customerId: deal.customer_id,
+      inventoryId: deal.inventory_id,
+      dealId: deal.id,
+      message: `Updated "${description}"${changes.length ? ': ' + changes.join(', ') : ''}`,
+    });
+    syncDealCommission(db, deal.id, req.user.id);
+    res.redirect(`/deals/${deal.id}#items`);
+  });
+
   router.post('/:id/items/:itemId/delete', loadDeal, editable, (req, res) => {
     const { deal } = req.bundle;
     const item = selectItem.get(Number(req.params.itemId), deal.id);
+    if (item && itemHasPayments.get(item.id)) {
+      req.flash('error', `Checks have been written against "${item.description}", so it can\u2019t be removed. Void those checks first.`);
+      return res.redirect(`/deals/${deal.id}#items`);
+    }
     if (item) {
       deleteItem.run(item.id, deal.id);
       touchDeal.run(deal.id);
+      syncDealCommission(db, deal.id, req.user.id);
       logActivity(db, {
         userId: req.user.id,
         customerId: deal.customer_id,
@@ -318,6 +374,7 @@ module.exports = function dealRoutes(db) {
         dealId: deal.id,
         message: `Marked sold to ${customerName(deal)} for ${usd(totals.total)}`,
       });
+      syncDealCommission(db, deal.id, req.user.id);
       return true;
     })();
     if (!ok) req.flash('error', 'Only a pending deal can be marked sold.');
@@ -345,6 +402,7 @@ module.exports = function dealRoutes(db) {
         dealId: deal.id,
         message: `Cancelled deal; stock #${home.stock_number} is available again. Reason: ${reason}`,
       });
+      syncDealCommission(db, deal.id, req.user.id);
       return true;
     })();
     if (!ok) req.flash('error', 'This deal is already cancelled.');

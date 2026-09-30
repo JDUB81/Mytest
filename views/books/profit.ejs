@@ -1,0 +1,59 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1>Books</h1></div>
+<%- include('_nav') %>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Month</th><th class="num">Homes sold</th><th class="num">Sales</th><th class="num">Gross profit</th><th class="num">Over budget</th><th class="num">Sales comm.</th><th class="num">Overhead</th><th class="num">Net profit</th><% gms.forEach(function (g) { %><th class="num"><%= g.full_name.split(' ')[0] %> (<%= g.rate %>%)</th><% }) %></tr></thead>
+    <tbody>
+    <% var neg = function (v) { return v ? '\u2212' + formatMoney(v) : '—'; }; %>
+    <% months.forEach(function (m) { %>
+      <tr class="<%= m.period === detail.period ? 'selected-row' : '' %>">
+        <td><a href="/books/profit?month=<%= m.period %>"><%= m.label %></a><%= m.period === current ? ' (so far)' : '' %></td>
+        <td class="num"><%= m.units %></td>
+        <td class="num"><%= formatMoney(m.revenue) %></td>
+        <td class="num"><%= formatMoney(m.grossProfit) %></td>
+        <td class="num <%= m.overruns ? 'overdue-text' : '' %>"><%= neg(m.overruns) %></td>
+        <td class="num"><%= neg(m.salesCommissions) %></td>
+        <td class="num"><%= neg(m.overhead) %></td>
+        <td class="num"><strong class="<%= m.netProfit < 0 ? 'overdue-text' : '' %>"><%= formatMoney(m.netProfit) %></strong></td>
+        <% gms.forEach(function (g) { %><td class="num"><%= formatMoney(m.netProfit * g.rate / 100) %></td><% }) %>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<p class="hint">Net profit = gross profit − job costs over allotment − salesperson commissions − overhead. Home purchases and deal job costs are already inside gross profit, so they aren't counted again as overhead. General manager commission is posted to the ledger once a month is over; the current month is an estimate.</p>
+
+<section class="card">
+  <h2><%= detail.label %> in detail</h2>
+  <div class="grid-2">
+    <div>
+      <h3>Deals sold</h3>
+      <% if (!detail.deals.length) { %><p class="muted">None.</p><% } else { %>
+      <table class="compact">
+        <thead><tr><th>Deal</th><th class="num">Gross</th><th class="num">Over</th><th class="num">Commission</th></tr></thead>
+        <tbody>
+        <% detail.deals.forEach(function (f) { %>
+          <tr><td><a href="/deals/<%= f.deal.id %>#jobs">#<%= f.deal.id %></a> <%= f.deal.last_name %> <span class="small muted"><%= f.deal.salesperson_name || '' %></span></td>
+            <td class="num"><%= formatMoney(f.totals.grossProfit) %></td>
+            <td class="num <%= f.jobs.overrun ? 'overdue-text' : '' %>"><%= f.jobs.overrun ? formatMoney(f.jobs.overrun) : '—' %></td>
+            <td class="num"><%= f.commission ? formatMoney(f.commission.net) : '—' %></td></tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+    <div>
+      <h3>Overhead</h3>
+      <% if (!detail.overheadRows.length) { %><p class="muted">No overhead recorded. Write checks for rent, utilities, advertising and so on under a category so they count here.</p><% } else { %>
+      <table class="compact">
+        <tbody>
+        <% detail.overheadRows.forEach(function (r) { %><tr><td><a href="/books/register?month=<%= detail.period %>&category=<%= r.category %>"><%= EXPENSE_CATEGORIES[r.category] || r.category %></a></td><td class="num"><%= formatMoney(r.total) %></td></tr><% }) %>
+        <tr class="total"><td>Total</td><td class="num"><%= formatMoney(detail.overhead) %></td></tr>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+  </div>
+</section>
+<%- include('../partials/footer') %>

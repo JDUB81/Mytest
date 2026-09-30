@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Books</h1>
+  <div class="actions"><a class="btn" href="/users">Set commission plans</a></div>
+</div>
+<%- include('_nav') %>
+<div class="card small muted">
+  <p><strong>Salespeople</strong> earn their rate × each deal's gross profit when the deal is marked sold. If checks for a job go over its allotted cost, the same rate × the overrun comes off their balance.</p>
+  <p><strong>General managers</strong> earn their rate × the lot's net profit for each completed month (deal profit after overruns, minus salesperson commissions, minus overhead). If a closed month changes later, the difference goes on the next balance.</p>
+</div>
+<% if (!balances.length) { %>
+  <div class="card muted">Nobody has a commission plan yet. Set one for each person under <a href="/users">Staff</a>.</div>
+<% } else { %>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Plan</th><th class="num">Earned</th><th class="num">Charge-backs</th><th class="num">Adjustments</th><th class="num">Paid out</th><th class="num">Balance owed</th><th></th></tr></thead>
+    <tbody>
+    <% balances.forEach(function (b) { %>
+      <tr class="<%= b.active ? '' : 'inactive' %>">
+        <td><a href="/books/commissions/<%= b.id %>"><strong><%= b.full_name %></strong></a></td>
+        <td class="small"><%= b.commission_plan === 'gm' ? 'General manager' : b.commission_plan === 'sales' ? 'Salesperson' : 'None' %><%= b.commission_plan !== 'none' ? ' · ' + b.rate + '%' : '' %></td>
+        <td class="num"><%= formatMoneyCents(b.earned) %></td>
+        <td class="num <%= b.overruns ? 'overdue-text' : '' %>"><%= formatMoneyCents(b.overruns) %></td>
+        <td class="num"><%= formatMoneyCents(b.adjustments) %></td>
+        <td class="num"><%= formatMoneyCents(Math.abs(b.paid)) %></td>
+        <td class="num"><strong class="<%= b.balance < 0 ? 'overdue-text' : '' %>"><%= formatMoneyCents(b.balance) %></strong></td>
+        <td class="num"><% if (b.balance > 0) { %><a class="btn" href="/books/checks/new?payee_user_id=<%= b.id %>">Pay</a><% } %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<p class="hint">A negative balance means charge-backs exceed what's been earned. It comes off future commissions.</p>
+<% } %>
+<%- include('../partials/footer') %>

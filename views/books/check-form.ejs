@@ -1,0 +1,97 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/books/register">Books</a> /</p>
+<h1>Write a check</h1>
+<%- include('../partials/errors', { errors: errors }) %>
+
+<form method="post" action="/books/checks" class="card check-form" id="check-form" data-rate="<%= commissionRate || '' %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <fieldset>
+    <legend>1. What is this for?</legend>
+    <label>Deal
+      <select name="deal_id" id="deal-select">
+        <option value="">Not for a deal — overhead or other expense</option>
+        <% deals.forEach(function (d) { %>
+          <option value="<%= d.id %>" <%= Number(values.deal_id) === d.id ? 'selected' : '' %>>Deal #<%= d.id %> — <%= d.last_name %>, <%= d.first_name %> — #<%= d.stock_number %> <%= d.manufacturer %> <%= d.model %> (<%= statusLabel(d.status) %>)</option>
+        <% }) %>
+      </select>
+    </label>
+    <noscript><button class="btn" type="submit" formmethod="get" formaction="/books/checks/new">Show this deal's jobs</button></noscript>
+
+    <% if (financials) { var fin = financials; %>
+      <div class="job-picker">
+        <p><strong>Which job are you paying for?</strong> <span class="muted small">Deal #<%= fin.deal.id %> · <%= fin.deal.first_name %> <%= fin.deal.last_name %> · #<%= fin.home.stock_number %><%= commissionRate ? ' · salesperson commission ' + commissionRate + '%' : '' %></span></p>
+        <% if (!fin.items.length) { %><p class="muted small">This deal has no add-ons, so nothing is allotted. Anything you pay here counts as over budget.</p><% } %>
+        <% fin.jobs.lines.filter(function (l) { return l.item; }).forEach(function (l) { %>
+          <label class="job-option">
+            <input type="radio" name="deal_item_id" value="<%= l.item.id %>" data-remaining="<%= l.remaining %>" data-label="<%= l.label %>" <%= String(values.deal_item_id) === String(l.item.id) ? 'checked' : '' %>>
+            <span class="job-name"><%= l.label %></span>
+            <span class="job-nums">allotted <strong><%= formatMoneyCents(l.allotted) %></strong> · paid <%= formatMoneyCents(l.paid) %> ·
+              <% if (l.over > 0) { %><span class="overdue-text"><%= formatMoneyCents(l.over) %> over</span><% } else { %>remaining <strong><%= formatMoneyCents(l.remaining) %></strong><% } %></span>
+          </label>
+        <% }) %>
+        <label class="job-option">
+          <input type="radio" name="deal_item_id" value="misc" data-remaining="0" data-label="Other" <%= values.deal_item_id === 'misc' ? 'checked' : '' %>>
+          <span class="job-name">Other — not on the deal</span>
+          <span class="job-nums">nothing allotted; the full amount counts as over budget</span>
+        </label>
+        <input type="hidden" name="category" value="job">
+      </div>
+    <% } else { %>
+      <label>Category
+        <select name="category">
+          <% Object.keys(EXPENSE_CATEGORIES).forEach(function (k) { if (k === 'job') return; %><option value="<%= k %>" <%= values.category === k ? 'selected' : '' %>><%= EXPENSE_CATEGORIES[k] %></option><% }) %>
+        </select>
+      </label>
+    <% } %>
+  </fieldset>
+
+  <fieldset>
+    <legend>2. Pay to</legend>
+    <div class="payee-types">
+      <% var pt = values.payee_type || 'vendor'; %>
+      <label class="check"><input type="radio" name="payee_type" value="vendor" <%= pt === 'vendor' ? 'checked' : '' %>> Vendor / contractor</label>
+      <label class="check"><input type="radio" name="payee_type" value="staff" <%= pt === 'staff' ? 'checked' : '' %>> Staff member</label>
+      <label class="check"><input type="radio" name="payee_type" value="other" <%= pt === 'other' ? 'checked' : '' %>> Someone else</label>
+    </div>
+    <div class="grid-3">
+      <label data-payee="vendor">Vendor
+        <select name="vendor_id">
+          <option value="">Choose…</option>
+          <% vendors.forEach(function (v) { %><option value="<%= v.id %>" <%= Number(values.vendor_id) === v.id ? 'selected' : '' %>><%= v.name %><%= v.trade ? ' (' + v.trade + ')' : '' %></option><% }) %>
+        </select>
+        <a class="small" href="/books/vendors/new?back=check">+ New vendor</a>
+      </label>
+      <label data-payee="staff">Staff member
+        <select name="payee_user_id">
+          <option value="">Choose…</option>
+          <% staff.forEach(function (u) { %><option value="<%= u.id %>" <%= Number(values.payee_user_id) === u.id ? 'selected' : '' %>><%= u.full_name %></option><% }) %>
+        </select>
+      </label>
+      <label data-payee="other">Name on check <input name="payee_name" value="<%= values.payee_name || '' %>"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>3. Payment</legend>
+    <div class="grid-3">
+      <label>Amount ($) <input name="amount" id="check-amount" inputmode="decimal" value="<%= values.amount || '' %>" required></label>
+      <label>Date <input type="date" name="paid_on" value="<%= values.paid_on %>" required></label>
+      <label>Paid by
+        <select name="method">
+          <% Object.keys(EXPENSE_METHODS).forEach(function (k) { %><option value="<%= k %>" <%= values.method === k ? 'selected' : '' %>><%= EXPENSE_METHODS[k] %></option><% }) %>
+        </select>
+      </label>
+      <label>Check # / reference <input name="check_number" value="<%= values.check_number || '' %>"></label>
+      <label class="span-2">Memo <input name="memo" value="<%= values.memo || '' %>" placeholder="e.g. Install 3-ton heat pump"></label>
+    </div>
+    <div class="flash flash-error budget-warning" id="budget-warning" hidden></div>
+  </fieldset>
+
+  <div class="actions">
+    <button class="btn primary" type="submit">Record payment</button>
+    <a href="/books/register">Cancel</a>
+  </div>
+</form>
+<script src="/app.js"></script>
+<%- include('../partials/footer') %>

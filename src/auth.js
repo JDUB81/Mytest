@@ -25,7 +25,7 @@ function passwordProblem(password, confirm) {
 // Loads the logged-in user (if any) onto req.user / res.locals.user and
 // exposes helpers every view needs.
 function loadUser(db) {
-  const findUser = db.prepare('SELECT id, username, full_name, role, active FROM users WHERE id = ?');
+  const findUser = db.prepare('SELECT id, username, full_name, role, active, commission_plan FROM users WHERE id = ?');
   return (req, res, next) => {
     req.user = null;
     if (req.session.userId) {

@@ -44,7 +44,7 @@ test('taxable base never goes negative with a big trade-in', () => {
 
 test('assigning a home opens a deal at list price with the default tax rate and doc fee', async () => {
   const boss = await as(app, 'boss');
-  await post(boss, '/settings', { business_name: 'Premier Homes', default_tax_rate: '4.5', default_doc_fee: '250', commission_percent: '20' });
+  await post(boss, '/settings', { business_name: 'Premier Homes', default_tax_rate: '4.5', default_doc_fee: '250', sales_commission_percent: '25', gm_commission_percent: '35', next_check_number: '1001' });
   const home = addHome(db, { price: 88000 });
   const customer = addCustomer(db);
   const sam = await as(app, 'sam');

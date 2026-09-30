@@ -66,6 +66,9 @@ function createApp(db, options = {}) {
       PAYMENT_KINDS: db_.PAYMENT_KINDS,
       PAYMENT_METHODS: db_.PAYMENT_METHODS,
       NOTE_KINDS: db_.NOTE_KINDS,
+      COMMISSION_PLANS: db_.COMMISSION_PLANS,
+      EXPENSE_CATEGORIES: db_.EXPENSE_CATEGORIES,
+      EXPENSE_METHODS: db_.EXPENSE_METHODS,
       HOME_TYPES: db_.HOME_TYPES,
       settings: db_.getSettings(db),
     });
@@ -93,6 +96,8 @@ function createApp(db, options = {}) {
   app.use('/tasks', require('./routes/tasks')(db));
   app.use('/reports', require('./routes/reports')(db));
   app.use('/settings', require('./routes/settings')(db));
+  app.use('/books', require('./routes/books')(db));
+  app.use('/my/commissions', require('./routes/books').myCommissions(db));
   app.use(require('./routes/search')(db));
 
   app.use((req, res) => {

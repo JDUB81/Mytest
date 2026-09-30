@@ -1,8 +1,9 @@
 const express = require('express');
 const { requireRole } = require('../auth');
-const { getSettings, LEAD_STATUSES, FINANCING_TYPES, PAYMENT_KINDS, PAYMENT_METHODS } = require('../db');
+const { LEAD_STATUSES, FINANCING_TYPES, PAYMENT_KINDS, PAYMENT_METHODS } = require('../db');
 const { date, daysSince } = require('../format');
 const { dealTotals, round2, today } = require('../deals');
+const { dealFinancials } = require('../books');
 
 function monthStart(offsetMonths = 0) {
   const d = new Date();
@@ -79,8 +80,6 @@ module.exports = function reportRoutes(db) {
 
   router.get('/', (req, res) => {
     const { from, to, preset } = range(req);
-    const settings = getSettings(db);
-    const commissionPct = Number(settings.commission_percent) || 0;
 
     const sold = soldDealsStmt.all({ from, to }).map(withTotals);
     const revenue = (d) => round2(d.totals.homeNet + d.totals.itemsTotal + d.doc_fee);
@@ -102,12 +101,14 @@ module.exports = function reportRoutes(db) {
     const bySalesperson = {};
     for (const d of sold) {
       const key = d.salesperson_name || 'Unassigned';
-      const row = (bySalesperson[key] ||= { name: key, units: 0, revenue: 0, grossProfit: 0 });
+      const row = (bySalesperson[key] ||= { name: key, units: 0, revenue: 0, grossProfit: 0, overruns: 0, commission: 0 });
+      const fin = dealFinancials(db, d.id);
       row.units += 1;
       row.revenue = round2(row.revenue + revenue(d));
       row.grossProfit = round2(row.grossProfit + d.totals.grossProfit);
+      row.overruns = round2(row.overruns + fin.jobs.overrun);
+      row.commission = round2(row.commission + (fin.commission ? fin.commission.net : 0));
     }
-    for (const row of Object.values(bySalesperson)) row.commission = round2((row.grossProfit * commissionPct) / 100);
 
     const byFinancing = {};
     for (const d of sold) {
@@ -189,7 +190,6 @@ module.exports = function reportRoutes(db) {
       sold,
       bySalesperson: Object.values(bySalesperson).sort((a, b) => b.revenue - a.revenue),
       byFinancing,
-      commissionPct,
       leadSources,
       payments,
       paymentsNet,

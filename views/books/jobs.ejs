@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Books</h1>
+  <div class="actions"><a class="btn primary" href="/books/checks/new">✎ Write a check</a></div>
+</div>
+<%- include('_nav') %>
+<div class="filters">
+  <div class="tabs">
+    <% [['open','Open & sold'],['pending','Pending'],['sold','Sold'],['all','All']].forEach(function (t) { %>
+      <a class="tab <%= status === t[0] ? 'active' : '' %>" href="/books/jobs?status=<%= t[0] %><%= onlyOver ? '&over=1' : '' %>"><%= t[1] %></a>
+    <% }) %>
+  </div>
+  <a class="tab <%= onlyOver ? 'active' : '' %>" href="/books/jobs?status=<%= status %><%= onlyOver ? '' : '&over=1' %>">Only over budget</a>
+</div>
+<% if (!deals.length) { %>
+  <div class="card muted">No deals here.</div>
+<% } else { %>
+  <% deals.forEach(function (f) { %>
+    <section class="card job-card">
+      <div class="card-head">
+        <h2><a href="/deals/<%= f.deal.id %>#jobs">Deal #<%= f.deal.id %></a> — <%= f.deal.first_name %> <%= f.deal.last_name %>
+          <span class="status status-<%= f.deal.status %>"><%= statusLabel(f.deal.status) %></span></h2>
+        <span class="small muted">#<%= f.home.stock_number %> <%= f.home.manufacturer %> <%= f.home.model %> · <%= f.deal.salesperson_name || 'no salesperson' %></span>
+      </div>
+      <% var pct = f.jobs.allotted ? Math.min(100, Math.round(f.jobs.paid / f.jobs.allotted * 100)) : (f.jobs.paid ? 100 : 0); %>
+      <div class="budget-bar <%= f.jobs.overrun ? 'over' : '' %>"><span style="width: <%= pct %>%"></span></div>
+      <p class="small"><strong><%= formatMoneyCents(f.jobs.paid) %></strong> paid of <%= formatMoneyCents(f.jobs.allotted) %> allotted
+        <% if (f.jobs.overrun) { %> · <span class="overdue-text"><%= formatMoneyCents(f.jobs.overrun) %> over</span><% } %>
+        · actual gross profit <strong><%= formatMoneyCents(f.actualProfit) %></strong>
+        <% if (f.commission) { %> · commission <%= formatMoneyCents(f.commission.net) %><% } %></p>
+      <% if (f.jobs.lines.length) { %>
+      <table class="compact">
+        <tbody>
+        <% f.jobs.lines.forEach(function (l) { %>
+          <tr class="<%= l.over > 0 ? 'overdue' : '' %>">
+            <td><%= l.label %></td>
+            <td class="num small">allotted <%= formatMoney(l.allotted) %></td>
+            <td class="num small">paid <%= formatMoney(l.paid) %></td>
+            <td class="num small"><%= l.over > 0 ? formatMoney(l.over) + ' over' : (l.paid ? formatMoney(l.remaining) + ' left' : 'not paid yet') %></td>
+            <td class="num small"><% if (l.item && l.remaining > 0 && f.deal.status !== 'cancelled') { %><a href="/books/checks/new?deal_id=<%= f.deal.id %>&item=<%= l.item.id %>">pay…</a><% } %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </section>
+  <% }) %>
+<% } %>
+<%- include('../partials/footer') %>

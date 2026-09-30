@@ -1,0 +1,5 @@
+<div class="tabs tabs-row books-nav">
+  <% [['/books/register','Check register'],['/books/jobs','Job costs'],['/books/commissions','Commissions'],['/books/profit','Profit & loss'],['/books/vendors','Vendors']].forEach(function (t) { %>
+    <a class="tab <%= currentPath.indexOf(t[0]) === 0 ? 'active' : '' %>" href="<%= t[0] %>"><%= t[1] %></a>
+  <% }) %>
+</div>

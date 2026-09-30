@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/books/vendors">Vendors</a> /</p>
+<div class="page-head">
+  <div><h1><%= vendor.name %></h1><p class="muted"><%= [vendor.trade, vendor.contact, vendor.phone, vendor.email].filter(Boolean).join(' · ') %></p></div>
+  <div class="actions"><a class="btn" href="/books/vendors/<%= vendor.id %>/edit">Edit</a><a class="btn primary" href="/books/checks/new?vendor_id=<%= vendor.id %>">✎ Pay <%= vendor.name %></a></div>
+</div>
+<% if (vendor.address || vendor.notes) { %><div class="card"><% if (vendor.address) { %><p class="notes"><%= vendor.address %></p><% } %><% if (vendor.notes) { %><p class="notes muted"><%= vendor.notes %></p><% } %></div><% } %>
+<% var paid = payments.filter(function (p) { return !p.voided_at; }).reduce(function (s, p) { return s + p.amount; }, 0); %>
+<p class="muted"><%= payments.length %> payment<%= payments.length === 1 ? '' : 's' %> · <%= formatMoneyCents(paid) %> total</p>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Check #</th><th>For</th><th>Memo</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+    <% payments.forEach(function (e) { %>
+      <tr class="<%= e.voided_at ? 'voided' : '' %>">
+        <td class="small"><%= formatDate(e.paid_on) %></td>
+        <td><a href="/books/checks/<%= e.id %>"><%= e.check_number ? '#' + e.check_number : EXPENSE_METHODS[e.method] %></a></td>
+        <td class="small"><% if (e.deal_id) { %><a href="/deals/<%= e.deal_id %>#jobs">Deal #<%= e.deal_id %></a> <%= e.last_name %><%= e.item_description ? ' · ' + e.item_description : '' %><% } else { %><%= EXPENSE_CATEGORIES[e.category] %><% } %></td>
+        <td class="small"><%= e.memo || '' %></td>
+        <td class="num"><%= formatMoneyCents(e.amount) %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

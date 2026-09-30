@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+<% if (canManage) { %><p class="crumb"><a href="/books/commissions">Commissions</a> /</p><% } %>
+<% var balance = entries.length ? entries[0].balance : 0; %>
+<div class="page-head">
+  <div>
+    <h1><%= canManage ? person.full_name : 'My commission' %></h1>
+    <p class="muted"><%= COMMISSION_PLANS[person.commission_plan] %><%= person.commission_plan !== 'none' ? ' · ' + rate + '%' : '' %></p>
+  </div>
+  <% if (canManage && balance > 0) { %><div class="actions"><a class="btn primary" href="/books/checks/new?payee_user_id=<%= person.id %>">Pay <%= formatMoneyCents(balance) %></a></div><% } %>
+</div>
+<div class="stats">
+  <div class="stat"><span class="num <%= balance < 0 ? 'overdue-text' : '' %>"><%= formatMoneyCents(balance) %></span><span>Balance owed<%= balance < 0 ? ' (charge-backs carry forward)' : '' %></span></div>
+</div>
+<% if (!entries.length) { %>
+  <div class="card muted">No commission activity yet.</div>
+<% } else { %>
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Type</th><th>Details</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead>
+    <tbody>
+    <% var kinds = { earned: 'Earned', overrun: 'Charge-back', gm: 'Net profit share', payout: 'Paid', adjustment: 'Adjustment' }; %>
+    <% entries.forEach(function (e) { %>
+      <tr>
+        <td class="small nowrap"><%= formatDate(e.paid_on || e.created_at) %></td>
+        <td class="small"><%= kinds[e.kind] || e.kind %></td>
+        <td><%= e.note %><% if (canManage && e.deal_id) { %> · <a href="/deals/<%= e.deal_id %>#jobs">deal</a><% } %><% if (canManage && e.expense_id) { %> · <a href="/books/checks/<%= e.expense_id %>">payment</a><% } %><% if (canManage && e.period) { %> · <a href="/books/profit?month=<%= e.period %>">P&amp;L</a><% } %></td>
+        <td class="num <%= e.amount < 0 ? 'overdue-text' : '' %>"><%= formatMoneyCents(e.amount) %></td>
+        <td class="num"><%= formatMoneyCents(e.balance) %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+<% if (canManage) { %>
+<form method="post" action="/books/commissions/<%= person.id %>/adjust" class="card inline-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <strong>Manual adjustment</strong>
+  <input name="amount" inputmode="decimal" placeholder="Amount (−500 to deduct)" class="short" required>
+  <input name="note" placeholder="Reason" required>
+  <button class="btn" type="submit">Record</button>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

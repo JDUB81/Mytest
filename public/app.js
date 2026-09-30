@@ -48,4 +48,64 @@
     };
     form.querySelectorAll('[data-calc]').forEach(function (el) { el.addEventListener('input', update); });
   }
+  // Deal page: picking from the add-on price list fills in the fields (still editable).
+  var addonForm = document.getElementById('addon-form');
+  if (addonForm) {
+    addonForm.querySelector('.addon-pick').addEventListener('change', function (e) {
+      var opt = e.target.selectedOptions[0];
+      if (!opt || !opt.value) return;
+      addonForm.elements.description.value = opt.dataset.name;
+      addonForm.elements.price.value = opt.dataset.price;
+      if (addonForm.elements.cost && opt.dataset.cost !== undefined) addonForm.elements.cost.value = opt.dataset.cost;
+      addonForm.elements.taxable.checked = opt.dataset.taxable === '1';
+      addonForm.elements.price.focus();
+    });
+  }
+
+  // Write-a-check page.
+  var checkForm = document.getElementById('check-form');
+  if (checkForm) {
+    var moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+    // Choosing a deal reloads the page to show that deal's jobs and allotments.
+    document.getElementById('deal-select').addEventListener('change', function (e) {
+      var params = new URLSearchParams();
+      if (e.target.value) params.set('deal_id', e.target.value);
+      var vendor = checkForm.elements.vendor_id.value;
+      if (vendor) params.set('vendor_id', vendor);
+      window.location = '/books/checks/new' + (params.toString() ? '?' + params : '');
+    });
+
+    var showPayee = function () {
+      var type = (checkForm.querySelector('input[name="payee_type"]:checked') || {}).value || 'vendor';
+      checkForm.querySelectorAll('[data-payee]').forEach(function (el) { el.hidden = el.dataset.payee !== type; });
+    };
+    checkForm.querySelectorAll('input[name="payee_type"]').forEach(function (r) { r.addEventListener('change', showPayee); });
+    showPayee();
+
+    var amount = document.getElementById('check-amount');
+    var warning = document.getElementById('budget-warning');
+    var rate = Number(checkForm.dataset.rate) || 0;
+    var checkBudget = function () {
+      var line = checkForm.querySelector('input[name="deal_item_id"]:checked');
+      var value = Number(String(amount.value).replace(/[$,\s]/g, ''));
+      if (!line || !value) { warning.hidden = true; return; }
+      var over = Math.round((value - Math.max(0, Number(line.dataset.remaining))) * 100) / 100;
+      if (over <= 0) { warning.hidden = true; return; }
+      warning.textContent = 'This is ' + moneyFmt.format(over) + ' over what is allotted for ' + line.dataset.label + '.' +
+        (rate ? ' The salesperson’s commission will be reduced by ' + moneyFmt.format(over * rate / 100) + ' (' + rate + '%).' : '');
+      warning.hidden = false;
+    };
+    checkForm.querySelectorAll('input[name="deal_item_id"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        // Suggest paying what's left on that job.
+        var left = Number(r.dataset.remaining);
+        if (left > 0 && !amount.value) amount.value = left.toFixed(2);
+        checkBudget();
+      });
+    });
+    amount.addEventListener('input', checkBudget);
+    var preselected = checkForm.querySelector('input[name="deal_item_id"]:checked');
+    if (preselected && !amount.value && Number(preselected.dataset.remaining) > 0) amount.value = Number(preselected.dataset.remaining).toFixed(2);
+    checkBudget();
+  }
 })();

@@ -1,0 +1,54 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Books</h1>
+  <div class="actions"><a class="btn primary" href="/books/checks/new">✎ Write a check</a></div>
+</div>
+<%- include('_nav') %>
+
+<form method="get" action="/books/register" class="filters">
+  <select name="month" aria-label="Month">
+    <% months.forEach(function (m) { %><option value="<%= m %>" <%= filters.month === m ? 'selected' : '' %>><%= monthLabel(m) %></option><% }) %>
+    <option value="all" <%= filters.month === 'all' ? 'selected' : '' %>>All time</option>
+  </select>
+  <select name="category" aria-label="Category">
+    <option value="">All categories</option>
+    <% Object.keys(EXPENSE_CATEGORIES).forEach(function (k) { %><option value="<%= k %>" <%= filters.category === k ? 'selected' : '' %>><%= EXPENSE_CATEGORIES[k] %></option><% }) %>
+  </select>
+  <select name="vendor" aria-label="Vendor">
+    <option value="">All payees</option>
+    <% vendors.forEach(function (v) { %><option value="<%= v.id %>" <%= Number(filters.vendor) === v.id ? 'selected' : '' %>><%= v.name %></option><% }) %>
+  </select>
+  <input type="search" name="q" value="<%= filters.q %>" placeholder="Payee, memo, check #">
+  <button class="btn" type="submit">Filter</button>
+</form>
+
+<div class="stats">
+  <div class="stat"><span class="num"><%= formatMoney(total) %></span><span>Paid out<%= filters.month === 'all' ? '' : ' in ' + monthLabel(filters.month) %></span></div>
+  <% Object.keys(byCategory).sort(function (a, b) { return byCategory[b] - byCategory[a]; }).slice(0, 3).forEach(function (k) { %>
+    <div class="stat"><span class="num"><%= formatMoney(byCategory[k]) %></span><span><%= EXPENSE_CATEGORIES[k] %></span></div>
+  <% }) %>
+</div>
+
+<% if (!rows.length) { %>
+  <div class="card muted">No payments recorded here yet. <a href="/books/checks/new">Write a check.</a></div>
+<% } else { %>
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Check #</th><th>Paid to</th><th>Category</th><th>For</th><th>Memo</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+      <% rows.forEach(function (e) { %>
+        <tr class="<%= e.voided_at ? 'voided' : '' %>">
+          <td class="nowrap small"><%= formatDate(e.paid_on) %></td>
+          <td><a href="/books/checks/<%= e.id %>"><%= e.method === 'check' ? '#' + e.check_number : EXPENSE_METHODS[e.method] %></a></td>
+          <td><%= e.payee_name %></td>
+          <td class="small"><%= EXPENSE_CATEGORIES[e.category] || e.category %></td>
+          <td class="small"><% if (e.deal_id) { %><a href="/deals/<%= e.deal_id %>#jobs">Deal #<%= e.deal_id %></a> <%= e.last_name || '' %><%= e.item_description ? ' · ' + e.item_description : '' %><% } else if (e.stock_number) { %>#<%= e.stock_number %><% } %></td>
+          <td class="small"><%= e.memo || '' %><%= e.voided_at ? ' (VOID)' : '' %></td>
+          <td class="num"><%= formatMoneyCents(e.amount) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/footer') %>

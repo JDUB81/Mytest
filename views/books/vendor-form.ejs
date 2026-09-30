@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/books/vendors">Vendors</a> /</p>
+<h1><%= title %></h1>
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<form method="post" action="<%= vendor.id ? '/books/vendors/' + vendor.id : '/books/vendors' %>" class="card stack form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (!vendor.id && typeof back !== 'undefined' && back) { %><input type="hidden" name="back" value="<%= back %>"><% } %>
+  <label>Name (as written on checks) <input name="name" value="<%= vendor.name || '' %>" required autofocus></label>
+  <label>Trade <input name="trade" value="<%= vendor.trade || '' %>" list="trades" placeholder="e.g. HVAC"></label>
+  <datalist id="trades"><option>HVAC</option><option>Setup crew</option><option>Transport</option><option>Plumbing</option><option>Electrical</option><option>Skirting</option><option>Decks &amp; steps</option><option>Foundation / site prep</option><option>Septic</option><option>Well</option><option>Manufacturer</option></datalist>
+  <label>Contact person <input name="contact" value="<%= vendor.contact || '' %>"></label>
+  <div class="grid-2 tight">
+    <label>Phone <input type="tel" name="phone" value="<%= vendor.phone || '' %>"></label>
+    <label>Email <input type="email" name="email" value="<%= vendor.email || '' %>"></label>
+  </div>
+  <label>Mailing address (printed on checks) <textarea name="address" rows="2"><%= vendor.address || '' %></textarea></label>
+  <label>Notes (tax ID on file, insurance, rates…) <textarea name="notes" rows="2"><%= vendor.notes || '' %></textarea></label>
+  <% if (vendor.id) { %>
+    <label>Status <select name="active"><option value="1" <%= vendor.active ? 'selected' : '' %>>Active</option><option value="0" <%= vendor.active ? '' : 'selected' %>>Inactive (hidden when writing checks)</option></select></label>
+  <% } %>
+  <div class="actions"><button class="btn primary" type="submit">Save</button> <a href="/books/vendors">Cancel</a></div>
+</form>
+<%- include('../partials/footer') %>

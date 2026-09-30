@@ -28,14 +28,14 @@
     <h2>By salesperson</h2>
     <% if (!bySalesperson.length) { %><p class="muted">No sales in this period.</p><% } else { %>
     <table>
-      <thead><tr><th>Salesperson</th><th class="num">Units</th><th class="num">Sales</th><th class="num">Gross</th><th class="num">Commission<%= commissionPct ? ' (' + commissionPct + '%)' : '' %></th></tr></thead>
+      <thead><tr><th>Salesperson</th><th class="num">Units</th><th class="num">Sales</th><th class="num">Gross</th><th class="num">Over budget</th><th class="num">Commission</th></tr></thead>
       <tbody>
       <% bySalesperson.forEach(function (r) { %>
-        <tr><td><%= r.name %></td><td class="num"><%= r.units %></td><td class="num"><%= formatMoney(r.revenue) %></td><td class="num"><%= formatMoney(r.grossProfit) %></td><td class="num"><%= commissionPct ? formatMoneyCents(r.commission) : '—' %></td></tr>
+        <tr><td><%= r.name %></td><td class="num"><%= r.units %></td><td class="num"><%= formatMoney(r.revenue) %></td><td class="num"><%= formatMoney(r.grossProfit) %></td><td class="num <%= r.overruns ? 'overdue-text' : '' %>"><%= r.overruns ? formatMoney(r.overruns) : '—' %></td><td class="num"><%= formatMoneyCents(r.commission) %></td></tr>
       <% }) %>
       </tbody>
     </table>
-    <% if (!commissionPct) { %><p class="hint">Set a commission percentage in <a href="/settings">Settings</a> to calculate commissions.</p><% } %>
+    <p class="hint">Commission after job-cost charge-backs, for deals sold in this period. Running balances are under <a href="/books/commissions">Books → Commissions</a>.</p>
     <% } %>
   </section>
 

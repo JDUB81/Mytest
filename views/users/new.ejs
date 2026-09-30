@@ -12,6 +12,19 @@
       <% }) %>
     </select>
   </label>
+  <fieldset>
+    <legend>Commission</legend>
+    <label>Plan
+      <select name="commission_plan">
+        <% Object.keys(COMMISSION_PLANS).forEach(function (k) { %><option value="<%= k %>" <%= (values.commission_plan || 'none') === k ? 'selected' : '' %>><%= COMMISSION_PLANS[k] %></option><% }) %>
+      </select>
+    </label>
+    <div class="grid-2 tight">
+      <label>Rate (%) <input name="commission_rate" inputmode="decimal" value="<%= values.commission_rate ?? '' %>" placeholder="Default: <%= defaults.sales %>% sales / <%= defaults.gm %>% GM"></label>
+      <label>Starts <input type="date" name="commission_since" value="<%= values.commission_since || '' %>"></label>
+    </div>
+    <p class="hint">Leave the rate blank to use the default from Settings. General managers earn on each full month from the start date.</p>
+  </fieldset>
   <label>Temporary password <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
   <label>Confirm password <input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
   <p class="hint">Share the password privately; they can change it after signing in.</p>

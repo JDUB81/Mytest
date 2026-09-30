@@ -19,6 +19,7 @@ function setup() {
   add.run('boss', 'Pat Manager', hashPassword('manager-pass'), 'manager');
   add.run('sam', 'Sam Sales', hashPassword('sales-pass1'), 'sales');
   add.run('sue', 'Sue Sales', hashPassword('sales-pass2'), 'sales');
+  db.prepare("UPDATE users SET commission_plan = 'sales', commission_since = '2020-01-01' WHERE role = 'sales'").run();
   return { db, app, uploadDir };
 }
 

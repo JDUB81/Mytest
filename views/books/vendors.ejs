@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Books</h1>
+  <div class="actions"><a class="btn" href="/books/vendors/new">+ New vendor</a><a class="btn primary" href="/books/checks/new">✎ Write a check</a></div>
+</div>
+<%- include('_nav') %>
+<% if (!vendors.length) { %>
+  <div class="card muted">No vendors yet. Add the people you pay: HVAC, setup crew, transport, plumber, electrician, and so on.</div>
+<% } else { %>
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>Vendor</th><th>Trade</th><th>Phone</th><th class="num">Payments</th><th class="num">Total paid</th><th>Last paid</th></tr></thead>
+      <tbody>
+      <% vendors.forEach(function (v) { %>
+        <tr class="<%= v.active ? '' : 'inactive' %>">
+          <td><a href="/books/vendors/<%= v.id %>"><strong><%= v.name %></strong></a><%= v.active ? '' : ' (inactive)' %></td>
+          <td class="small"><%= v.trade || '—' %></td>
+          <td class="small"><% if (v.phone) { %><a href="tel:<%= v.phone %>"><%= v.phone %></a><% } else { %>—<% } %></td>
+          <td class="num"><%= v.payments %></td>
+          <td class="num"><%= formatMoney(v.total) %></td>
+          <td class="small"><%= v.last_paid ? formatDate(v.last_paid) : '—' %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/footer') %>

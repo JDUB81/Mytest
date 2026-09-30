@@ -55,43 +55,98 @@
 
   <section class="card" id="items">
     <h2>Add-ons &amp; options</h2>
-    <% if (!items.length) { %><p class="muted">No add-ons. Typical: delivery &amp; setup, A/C, skirting, steps, foundation, site prep.</p><% } else { %>
-      <table>
-        <thead><tr><th>Item</th><th class="num">Price</th><% if (isManager) { %><th class="num">Cost</th><% } %><th></th></tr></thead>
+    <% var itemsEditable = canEdit && deal.status !== 'cancelled'; %>
+    <% if (!items.length) { %><p class="muted">No add-ons yet.</p><% } else { %>
+      <table class="items-table">
+        <thead><tr><th>Item</th><th class="num">Price</th><% if (isManager) { %><th class="num">Allotted cost</th><% } %><th></th></tr></thead>
         <tbody>
         <% items.forEach(function (i) { %>
           <tr>
             <td><%= i.description %><% if (!i.taxable) { %> <span class="small muted">non-taxable</span><% } %></td>
             <td class="num"><%= formatMoneyCents(i.price) %></td>
             <% if (isManager) { %><td class="num"><%= i.cost == null ? '—' : formatMoneyCents(i.cost) %></td><% } %>
-            <td class="num"><% if (canEdit && deal.status !== 'cancelled') { %>
-              <form method="post" action="/deals/<%= deal.id %>/items/<%= i.id %>/delete" class="inline">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="link small" type="submit">remove</button>
-              </form><% } %></td>
+            <td class="num nowrap"><% if (itemsEditable) { %>
+              <details class="item-edit">
+                <summary class="small">edit</summary>
+                <form method="post" action="/deals/<%= deal.id %>/items/<%= i.id %>" class="item-form">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input name="description" value="<%= i.description %>" aria-label="Description">
+                  <label class="inline-label small">Price <input name="price" inputmode="decimal" value="<%= i.price %>" class="short"></label>
+                  <% if (isManager) { %><label class="inline-label small">Cost <input name="cost" inputmode="decimal" value="<%= i.cost ?? '' %>" class="short"></label><% } %>
+                  <label class="check small"><input type="checkbox" name="taxable" value="1" <%= i.taxable ? 'checked' : '' %>> Taxable</label>
+                  <button class="btn" type="submit">Save</button>
+                </form>
+                <form method="post" action="/deals/<%= deal.id %>/items/<%= i.id %>/delete" onsubmit="return confirm('Remove this add-on?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="link small" type="submit">remove from deal</button>
+                </form>
+              </details><% } %></td>
           </tr>
         <% }) %>
         </tbody>
       </table>
     <% } %>
-    <% if (canEdit && deal.status !== 'cancelled') { %>
-      <form method="post" action="/deals/<%= deal.id %>/items" class="item-form">
+    <% if (itemsEditable) { %>
+      <form method="post" action="/deals/<%= deal.id %>/items" class="item-form" id="addon-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <input name="description" list="addon-suggestions" placeholder="Description" required>
-        <datalist id="addon-suggestions">
-          <option>Delivery &amp; setup</option><option>Central A/C</option><option>Heat pump</option><option>Skirting</option>
-          <option>Steps / porch</option><option>Deck</option><option>Foundation</option><option>Site prep</option>
-          <option>Utility hookups</option><option>Septic</option><option>Well</option><option>Gutters</option>
-          <option>Appliance package</option><option>Extended warranty</option><option>Permits</option><option>Title &amp; registration</option>
-        </datalist>
-        <input name="price" inputmode="decimal" placeholder="Price" required class="short">
-        <% if (isManager) { %><input name="cost" inputmode="decimal" placeholder="Cost" class="short"><% } %>
+        <select name="catalog_id" aria-label="Pick from price list" class="addon-pick">
+          <option value="">Custom item…</option>
+          <% catalog.forEach(function (c) { %>
+            <option value="<%= c.id %>" data-name="<%= c.name %>" data-price="<%= c.price %>" <% if (isManager) { %>data-cost="<%= c.cost %>"<% } %> data-taxable="<%= c.taxable %>"><%= c.name %> — <%= formatMoney(c.price) %></option>
+          <% }) %>
+        </select>
+        <input name="description" placeholder="Description">
+        <input name="price" inputmode="decimal" placeholder="Price" class="short">
+        <% if (isManager) { %><input name="cost" inputmode="decimal" placeholder="Allotted cost" class="short"><% } %>
         <label class="check small"><input type="checkbox" name="taxable" value="1" checked> Taxable</label>
         <button class="btn" type="submit">Add</button>
       </form>
+      <p class="hint">Pick from the price list to fill in the price<%= isManager ? ' and allotted cost' : '' %>, then change it if needed.<% if (isManager && !catalog.length) { %> <a href="/settings/addons">Set up the price list</a>.<% } %></p>
     <% } %>
   </section>
 </div>
+
+<% if (financials) { var fin = financials; %>
+<section class="card manager-box" id="jobs">
+  <div class="card-head"><h2>Job costs</h2>
+    <% if (deal.status !== 'cancelled') { %><a class="btn primary" href="/books/checks/new?deal_id=<%= deal.id %>">Pay a vendor for this deal</a><% } %></div>
+  <% if (!fin.jobs.lines.length) { %>
+    <p class="muted">No add-ons on this deal yet, so nothing is allotted for jobs.</p>
+  <% } else { %>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Job</th><th class="num">Allotted</th><th class="num">Paid</th><th class="num">Remaining</th><th>Checks</th></tr></thead>
+    <tbody>
+    <% fin.jobs.lines.forEach(function (l) { %>
+      <tr class="<%= l.over > 0 ? 'overdue' : '' %>">
+        <td><%= l.label %></td>
+        <td class="num"><%= formatMoneyCents(l.allotted) %></td>
+        <td class="num"><%= formatMoneyCents(l.paid) %></td>
+        <td class="num"><%= l.over > 0 ? formatMoneyCents(l.over) + ' over' : formatMoneyCents(l.remaining) %></td>
+        <td class="small"><% l.payments.forEach(function (e, idx) { %><%= idx ? ', ' : '' %><a href="/books/checks/<%= e.id %>"><%= e.check_number ? '#' + e.check_number : 'pmt' %></a> <%= e.payee_name %><% }) %>
+          <% if (l.item && l.remaining > 0 && deal.status !== 'cancelled') { %> <a class="small" href="/books/checks/new?deal_id=<%= deal.id %>&item=<%= l.item.id %>">pay…</a><% } %></td>
+      </tr>
+    <% }) %>
+    <tr class="total"><td>Total</td><td class="num"><%= formatMoneyCents(fin.jobs.allotted) %></td><td class="num"><%= formatMoneyCents(fin.jobs.paid) %></td><td class="num"><%= fin.jobs.overrun ? formatMoneyCents(fin.jobs.overrun) + ' over' : '' %></td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <% } %>
+  <dl class="details" style="margin-top:1rem">
+    <dt>Gross profit (budget)</dt><dd><%= formatMoneyCents(totals.grossProfit) %></dd>
+    <% if (fin.jobs.overrun) { %><dt>Over allotment</dt><dd class="overdue-text">−<%= formatMoneyCents(fin.jobs.overrun) %></dd><% } %>
+    <dt>Actual gross profit</dt><dd><strong><%= formatMoneyCents(fin.actualProfit) %></strong></dd>
+    <dt>Salesperson commission</dt><dd>
+      <% if (fin.commission) { %>
+        <%= formatMoneyCents(fin.commission.earned) %> (<%= fin.commission.rate %>%)<% if (fin.jobs.overrun) { %> − <%= formatMoneyCents(-fin.commission.overrun) %> charge-back = <strong><%= formatMoneyCents(fin.commission.net) %></strong><% } %>
+        · <a href="/books/commissions/<%= fin.commission.userId %>">ledger</a>
+      <% } else if (deal.status === 'pending') { %>
+        <span class="muted">Calculated when the deal is marked sold.</span>
+      <% } else { %><span class="muted">None (salesperson has no commission plan).</span><% } %>
+    </dd>
+  </dl>
+</section>
+<% } %>
 
 <section class="card" id="payments">
   <h2>Deposits &amp; payments</h2>
