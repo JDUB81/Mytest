@@ -247,3 +247,22 @@ test('upgrading a first-version database turns assigned homes into deals', () =>
   // Re-opening is a no-op.
   openDatabase(file).close();
 });
+
+test('managers can download a database backup; sales cannot', async () => {
+  addCustomer(db, { first_name: 'Backed', last_name: 'Up' });
+  const boss = await as(app, 'boss');
+  const res = await boss.get('/settings/backup').buffer(true).parse((r, cb) => {
+    const chunks = [];
+    r.on('data', (c) => chunks.push(c));
+    r.on('end', () => cb(null, Buffer.concat(chunks)));
+  });
+  assert.strictEqual(res.status, 200);
+  assert.match(res.headers['content-disposition'], /premier-homes-backup-/);
+  const file = `${uploadDir}/restored.db`;
+  fs.writeFileSync(file, res.body);
+  const restored = new Database(file, { readonly: true });
+  assert.strictEqual(restored.prepare("SELECT COUNT(*) n FROM customers WHERE first_name = 'Backed'").get().n, 1);
+  restored.close();
+  const sam = await as(app, 'sam');
+  assert.strictEqual((await sam.get('/settings/backup')).status, 403);
+});

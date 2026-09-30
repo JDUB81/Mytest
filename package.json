@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/server.js",
     "create-user": "node scripts/create-user.js",
-    "test": "BCRYPT_ROUNDS=4 node --test"
+    "test": "BCRYPT_ROUNDS=4 node --test",
+    "seed-demo": "node scripts/seed-demo.js",
+    "demo": "node scripts/seed-demo.js && DB_PATH=data/demo.db UPLOAD_DIR=data/demo-uploads node src/server.js"
   },
   "engines": {
     "node": ">=18"

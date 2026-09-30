@@ -1,8 +1,11 @@
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const express = require('express');
 const { requireRole } = require('../auth');
 const { getSettings, DEFAULT_SETTINGS } = require('../db');
 const { text, number } = require('../format');
-const { logActivity } = require('../deals');
+const { logActivity, today } = require('../deals');
 
 const NUMERIC = {
   default_tax_rate: { max: 30, label: 'Default tax rate' },
@@ -43,6 +46,19 @@ module.exports = function settingsRoutes(db) {
     })();
     req.flash('success', 'Settings saved.');
     res.redirect('/settings');
+  });
+
+  // Consistent snapshot of the whole database (safe while the app is running).
+  router.get('/backup', async (req, res, next) => {
+    const file = path.join(os.tmpdir(), `premier-backup-${process.pid}-${Date.now()}.db`);
+    try {
+      await db.backup(file);
+      logActivity(db, { userId: req.user.id, message: 'Downloaded a database backup' });
+      res.download(file, `premier-homes-backup-${today()}.db`, () => fs.rm(file, { force: true }, () => {}));
+    } catch (err) {
+      fs.rm(file, { force: true }, () => {});
+      next(err);
+    }
   });
 
   return router;

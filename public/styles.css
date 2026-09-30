@@ -238,3 +238,19 @@ button.link.small { font-size: .78rem; color: var(--muted); text-decoration: und
   .topsearch { order: 5; width: 100%; }
   .topsearch input { width: 100%; }
 }
+
+/* Top bar: brand, search and account on the first row; navigation on its own row. */
+.topbar { gap: .6rem 1.25rem; padding-bottom: 0; }
+.topbar .topsearch { margin-left: auto; }
+.topbar nav { order: 10; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; gap: .15rem; margin: 0 -.5rem; scrollbar-width: none; }
+.topbar nav a { white-space: nowrap; border-radius: 6px 6px 0 0; padding: .45rem .8rem .55rem; }
+.topbar nav a.active { background: var(--bg); color: var(--text); }
+@media (max-width: 700px) {
+  .topbar { padding: .5rem 1rem 0; }
+  .topbar .topsearch { order: 9; margin-left: 0; }
+  .account { gap: .75rem; font-size: .8rem; margin-left: auto; }
+  .account .who .role-badge { display: none; }
+}
+.filters select, .filters input:not([type=search]) { width: auto; }
+.filters input[type=search] { width: auto; }
+@media (max-width: 700px) { .filters select, .filters input[type=search] { flex: 1 1 100%; } }
