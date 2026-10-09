@@ -23,7 +23,7 @@
       <label>Rate (%) <input name="commission_rate" inputmode="decimal" value="<%= values.commission_rate ?? '' %>" placeholder="Default: <%= defaults.sales %>% sales / <%= defaults.gm %>% GM"></label>
       <label>Starts <input type="date" name="commission_since" value="<%= values.commission_since || '' %>"></label>
     </div>
-    <p class="hint">Leave the rate blank to use the default from Settings. General managers earn on each full month from the start date.</p>
+    <p class="hint">The Jon Wayne pay scale sets the rate from each deal's profit (edit the tiers in Settings), so it ignores the rate box. For a flat % or GM plan, leave the rate blank to use the default from Settings. General managers earn on each full month from the start date.</p>
   </fieldset>
   <label>Temporary password <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
   <label>Confirm password <input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>

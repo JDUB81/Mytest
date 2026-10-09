@@ -6,6 +6,7 @@ const { requireRole } = require('../auth');
 const { getSettings, DEFAULT_SETTINGS, JOB_CATEGORIES } = require('../db');
 const { text, number, choice } = require('../format');
 const { logActivity, today } = require('../deals');
+const { commissionScale } = require('../books');
 
 const NUMERIC = {
   default_tax_rate: { max: 30, label: 'Default tax rate' },
@@ -24,7 +25,7 @@ module.exports = function settingsRoutes(db) {
   );
 
   router.get('/', (req, res) => {
-    res.render('settings', { title: 'Settings', values: getSettings(db), errors: [] });
+    res.render('settings', { title: 'Settings', values: getSettings(db), errors: [], scale: commissionScale(db) });
   });
 
   router.post('/', (req, res) => {
@@ -40,7 +41,7 @@ module.exports = function settingsRoutes(db) {
       }
     }
     if (!values.business_name) errors.push('Business name is required.');
-    if (errors.length) return res.status(400).render('settings', { title: 'Settings', values, errors });
+    if (errors.length) return res.status(400).render('settings', { title: 'Settings', values, errors, scale: commissionScale(db) });
 
     db.transaction(() => {
       for (const [key, value] of Object.entries(values)) upsert.run(key, value);
@@ -48,6 +49,32 @@ module.exports = function settingsRoutes(db) {
     })();
     req.flash('success', 'Settings saved.');
     res.redirect('/settings');
+  });
+
+  // Jon Wayne pay scale tiers: rows of "profit from" + rate for singles and doubles.
+  router.post('/scale', (req, res) => {
+    const tiers = (prefix) => {
+      const out = [];
+      for (let i = 0; i < 6; i++) {
+        const from = number(req.body[`${prefix}_from_${i}`], { max: 10000000 });
+        const rate = number(req.body[`${prefix}_rate_${i}`], { max: 100 });
+        if (from.error || rate.error) return null;
+        if (from.value !== null && rate.value !== null) out.push([from.value, rate.value]);
+      }
+      return out.sort((a, b) => a[0] - b[0]);
+    };
+    const single = tiers('single');
+    const double = tiers('double');
+    const minSingle = number(req.body.min_single, { max: 10000000 });
+    const minDouble = number(req.body.min_double, { max: 10000000 });
+    if (!single || !double || !single.length || !double.length || minSingle.error || minDouble.error) {
+      req.flash('error', 'Each tier needs a profit amount and a rate (0–100%).');
+      return res.redirect('/settings#scale');
+    }
+    upsert.run('commission_scale', JSON.stringify({ single, double, min_single: minSingle.value ?? 0, min_double: minDouble.value ?? 0 }));
+    logActivity(db, { userId: req.user.id, message: 'Updated the salesman pay scale' });
+    req.flash('success', 'Pay scale saved. It applies to deals sold from now on; sold deals are recalculated only if they change.');
+    res.redirect('/settings#scale');
   });
 
   // --- Add-on price list ---------------------------------------------------------

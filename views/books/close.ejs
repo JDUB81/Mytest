@@ -1,0 +1,64 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Books</h1>
+  <div class="actions"><a class="btn primary" href="/books/expenses/enter?month=<%= month %>">+ Enter <%= monthLabel %> expenses</a></div>
+</div>
+<%- include('_nav') %>
+<div class="filters">
+  <a class="btn" href="/books/close?month=<%= prev %>">← Previous</a>
+  <h2 style="margin:0"><%= monthLabel %> <% if (closed) { %><span class="status status-available">Closed</span><% } else { %><span class="status status-pending">Open</span><% } %></h2>
+  <a class="btn" href="/books/close?month=<%= next %>">Next →</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><span class="num"><%= profit.units %></span><span>Homes sold</span></div>
+  <div class="stat"><span class="num"><%= formatMoney(profit.grossProfit - profit.overruns) %></span><span>Gross profit after job overruns</span></div>
+  <div class="stat"><span class="num"><%= formatMoney(profit.overhead) %></span><span>Net overhead</span></div>
+  <div class="stat"><span class="num <%= profit.netProfit < 0 ? 'overdue-text' : '' %>"><%= formatMoney(profit.netProfit) %></span><span>Net profit (after commissions)</span></div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Checklist</h2>
+    <ul class="checklist">
+      <li class="<%= missing.length ? 'bad' : 'good' %>"><%= missing.length ? missing.length + ' recurring expense' + (missing.length === 1 ? '' : 's') + ' not entered' : 'All recurring expenses entered' %>
+        <% if (missing.length) { %><ul><% missing.forEach(function (a) { %><li><%= a.name %> <span class="small muted">(budget <%= formatMoney(a.budget) %>)</span></li><% }) %></ul><% } %></li>
+      <li class="<%= unpaidJobDeals ? 'warn' : 'good' %>"><%= unpaidJobDeals ? unpaidJobDeals + ' deal' + (unpaidJobDeals === 1 ? '' : 's') + ' sold this month with jobs not paid yet' : 'No unpaid jobs on deals sold this month' %>
+        <% if (unpaidJobDeals) { %> · <a href="/books/jobs?status=sold">review job costs</a><% } %></li>
+      <li class="good">Bank statement reconciled <span class="small muted">(check your statement against the <a href="/books/register?month=<%= month %>">register</a>)</span></li>
+    </ul>
+    <% if (closed) { %>
+      <p class="muted">Closed by <%= closed.full_name %> on <%= formatDateTime(closed.closed_at) %><%= closed.notes ? ' — ' + closed.notes : '' %>.</p>
+      <form method="post" action="/books/close" class="inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="month" value="<%= month %>"><input type="hidden" name="action" value="reopen">
+        <button class="btn" type="submit">Reopen month</button>
+      </form>
+    <% } else { %>
+      <form method="post" action="/books/close" class="stack">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="month" value="<%= month %>">
+        <% if (missing.length) { %><label class="check"><input type="checkbox" name="confirm_missing" value="1"> I've confirmed the missing items don't apply to <%= monthLabel %></label><% } %>
+        <label>Notes <input name="notes" placeholder="Optional"></label>
+        <button class="btn primary" type="submit">Close <%= monthLabel %></button>
+      </form>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <h2>Budget vs. actual</h2>
+    <div class="table-wrap">
+    <table class="compact">
+      <thead><tr><th>Account</th><th class="num">Actual</th><th class="num">Budget</th><th class="num">Difference</th></tr></thead>
+      <tbody>
+      <% accounts.forEach(function (a) { var t = totals[a.key]; var actual = t ? t.total : 0; if (!actual && !a.budget) return; var diff = a.kind === 'income' ? actual - a.budget : a.budget - actual; %>
+        <tr><td><a href="/books/register?month=<%= month %>&category=<%= a.key %>"><%= a.name %></a></td>
+          <td class="num"><%= actual ? formatMoney(actual) : '—' %></td>
+          <td class="num"><%= a.budget ? formatMoney(a.budget) : '—' %></td>
+          <td class="num <%= diff < 0 ? 'overdue-text' : 'ok-text' %>"><%= diff < 0 ? '−' + formatMoney(-diff) : formatMoney(diff) %></td></tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <p class="hint">Green = under budget (or income above budget); red = over.</p>
+  </section>
+</div>
+<%- include('../partials/footer') %>

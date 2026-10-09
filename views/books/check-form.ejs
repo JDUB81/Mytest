@@ -40,7 +40,7 @@
     <% } else { %>
       <label>Category
         <select name="category">
-          <% Object.keys(EXPENSE_CATEGORIES).forEach(function (k) { if (k === 'job') return; %><option value="<%= k %>" <%= values.category === k ? 'selected' : '' %>><%= EXPENSE_CATEGORIES[k] %></option><% }) %>
+          <% Object.keys(EXPENSE_CATEGORIES).forEach(function (k) { if (k === 'job' || ACCOUNT_KINDS[k] === 'income') return; %><option value="<%= k %>" <%= values.category === k ? 'selected' : '' %>><%= EXPENSE_CATEGORIES[k] %></option><% }) %>
         </select>
       </label>
     <% } %>

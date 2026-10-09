@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1><%= canManage ? person.full_name : 'My commission' %></h1>
-    <p class="muted"><%= COMMISSION_PLANS[person.commission_plan] %><%= person.commission_plan !== 'none' ? ' · ' + rate + '%' : '' %></p>
+    <p class="muted"><%= COMMISSION_PLANS[person.commission_plan] %><%= ['sales', 'gm'].includes(person.commission_plan) ? ' · ' + rate + '%' : '' %></p>
   </div>
   <% if (canManage && balance > 0) { %><div class="actions"><a class="btn primary" href="/books/checks/new?payee_user_id=<%= person.id %>">Pay <%= formatMoneyCents(balance) %></a></div><% } %>
 </div>

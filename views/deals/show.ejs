@@ -144,7 +144,7 @@
     <dt>Actual gross profit</dt><dd><strong><%= formatMoneyCents(fin.actualProfit) %></strong></dd>
     <dt>Salesperson commission</dt><dd>
       <% if (fin.commission) { %>
-        <%= formatMoneyCents(fin.commission.earned) %> (<%= fin.commission.rate %>%)<% if (fin.jobs.overrun) { %> − <%= formatMoneyCents(-fin.commission.overrun) %> charge-back = <strong><%= formatMoneyCents(fin.commission.net) %></strong><% } %>
+        <%= formatMoneyCents(fin.commission.earned) %> (<%= fin.commission.plan === 'scale' ? 'Jon Wayne scale ' : '' %><%= fin.commission.rate %>%)<% if (fin.jobs.overrun) { %> − <%= formatMoneyCents(-fin.commission.overrun) %> charge-back<%= fin.commission.plan === 'scale' && fin.commission.actualRate !== fin.commission.rate ? ' (tier dropped to ' + fin.commission.actualRate + '%)' : '' %> = <strong><%= formatMoneyCents(fin.commission.net) %></strong><% } %>
         · <a href="/books/commissions/<%= fin.commission.userId %>">ledger</a>
       <% } else if (deal.status === 'pending') { %>
         <span class="muted">Calculated when the deal is marked sold.</span>
@@ -224,6 +224,9 @@
 <% if (isManager) { %>
 <section class="card manager-box">
   <h2>Manager actions</h2>
+  <% if (financials && financials.belowMinimum && deal.status === 'pending') { %>
+    <div class="flash flash-error">Gross profit <%= formatMoneyCents(totals.grossProfit) %> is under the <%= financials.sections === 'single' ? 'single-wide' : 'double-wide' %> minimum of <%= formatMoney(financials.minProfit) %>. Marking it sold counts as your approval.</div>
+  <% } %>
   <div class="actions">
     <% if (deal.status === 'pending') { %>
       <form method="post" action="/deals/<%= deal.id %>/sold" class="inline"

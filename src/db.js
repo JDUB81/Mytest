@@ -112,28 +112,56 @@ const DOCUMENT_TYPES = {
 
 const COMMISSION_PLANS = {
   none: 'No commission',
-  sales: 'Salesperson — % of each deal\u2019s gross profit',
+  scale: 'Salesperson — Jon Wayne pay scale (10–25% of deal profit)',
+  sales: 'Salesperson — flat % of each deal\u2019s gross profit',
   gm: 'General manager — % of the lot\u2019s monthly net profit',
 };
 
-const EXPENSE_CATEGORIES = {
-  job: 'Deal job cost (setup, HVAC, etc.)',
-  inventory: 'Inventory purchase / freight',
-  commission: 'Commission payout',
-  payroll: 'Payroll',
-  rent: 'Rent / lot lease',
-  utilities: 'Utilities',
-  advertising: 'Advertising',
-  insurance: 'Insurance',
-  maintenance: 'Lot & office maintenance',
-  office: 'Office & supplies',
-  fees: 'Bank & professional fees',
-  taxes: 'Taxes & licenses',
-  other: 'Other overhead',
+// [key, name, kind, monthly budget, recurring (expected every month), Hartsville 2023 monthly average]
+// Budgets come from the startup model in "Dealership Model - High Volume vs High Margin"
+// where it has one, otherwise from the Town & Country Hartsville 2023 budget column.
+const DEFAULT_ACCOUNTS = [
+  ['job', 'Deal job costs (setup, HVAC, etc.)', 'cogs', 0, 0, null],
+  ['inventory', 'Home purchases / freight', 'cogs', 0, 0, null],
+  ['commission', 'Commission payouts', 'cogs', 0, 0, null],
+  ['advertising', 'Advertising & marketing', 'expense', 6000, 1, 2119.19],
+  ['improvements', 'Improvements', 'expense', 0, 0, 1458.58],
+  ['insurance', 'Insurance (GL + inventory)', 'expense', 940, 1, 3106.07],
+  ['rent', 'Land lease / lot rent', 'expense', 1000, 1, 1416.48],
+  ['property_tax', 'Property tax', 'expense', 107, 1, null],
+  ['payroll', 'Salaries & payroll (GM, admin, lot tech)', 'expense', 11424, 1, 5750.86],
+  ['health', 'Health insurance', 'expense', 120, 0, 208.01],
+  ['utilities', 'Utilities, internet & phone', 'expense', 1600, 1, 1315.41],
+  ['waste', 'Waste management', 'expense', 150, 1, 383.52],
+  ['cleaning', 'Office cleaning', 'expense', 150, 0, 283.33],
+  ['maintenance', 'Lot & office maintenance', 'expense', 1500, 0, 996.42],
+  ['office', 'Office supplies', 'expense', 400, 0, 1931.85],
+  ['software', 'Software, accounting & security', 'expense', 1500, 1, null],
+  ['dues', 'Dues & subscriptions', 'expense', 300, 0, 360.51],
+  ['credit_reports', 'Credit reports', 'expense', 400, 0, 234.84],
+  ['postage', 'Postage / freight', 'expense', 100, 0, 114.76],
+  ['fees', 'Bank & merchant fees', 'expense', 300, 0, 96.10],
+  ['interest', 'Floor plan interest & audit fees', 'expense', 0, 0, 15230.48],
+  ['legal', 'Legal & professional fees', 'expense', 0, 0, 71.67],
+  ['promo', 'Promotions & customer gifts', 'expense', 1000, 0, 92.55],
+  ['meals', 'Meals', 'expense', 200, 0, 112.41],
+  ['warranty', 'Warranty / service', 'expense', 0, 0, null],
+  ['taxes', 'Taxes & licenses', 'expense', 0, 0, null],
+  ['other', 'Misc / other', 'expense', 400, 0, 840.08],
+  ['mfr_reimb', 'Manufacturer reimbursement / marketing allowance', 'income', 3000, 0, 7359.28],
+  ['floorplan_reimb', 'Floor plan reimbursement (Cavco)', 'income', 0, 0, null],
+  ['tires_axles', 'Tires & axles buyback', 'income', 0, 0, null],
+  ['other_income', 'Other income', 'income', 0, 0, null],
+];
+
+// Jon Wayne Home Sales salesman pay scale: the rate is set by the deal's net profit and
+// applies to the whole deal. Deals under the minimum need management approval.
+const DEFAULT_COMMISSION_SCALE = {
+  single: [[0, 10], [10000, 18], [13000, 20]],
+  double: [[0, 10], [10000, 18], [20000, 20], [30000, 25]],
+  min_single: 9000,
+  min_double: 15000,
 };
-// Categories that are NOT overhead: job costs and home costs are already counted in
-// each deal's profit, and commission payouts settle the commission ledger.
-const NON_OVERHEAD = ['job', 'inventory', 'commission'];
 
 const EXPENSE_METHODS = { check: 'Check', ach: 'ACH / transfer', card: 'Card', cash: 'Cash', other: 'Other' };
 
@@ -539,6 +567,50 @@ const MIGRATIONS = [
     lender.run('Triad Financial (estimate)', 48, null, 9.99, 240, 0,
       'Placeholder: Triad advertises back-end DTI up to 48% with no housing ratio (land-home). Replace rate, term and down payment with your current Triad rate sheet.', 2);
   },
+  (db) => {
+    db.exec(`
+      -- Chart of accounts for money in and out, with a monthly budget for each.
+      --   kind: 'expense' (overhead), 'income' (credits such as manufacturer reimbursements),
+      --         'cogs' (deal job costs, home purchases, commission payouts: already counted
+      --         in deal profit or the commission ledger, so not overhead)
+      CREATE TABLE expense_accounts (
+        key        TEXT PRIMARY KEY,
+        name       TEXT NOT NULL,
+        kind       TEXT NOT NULL DEFAULT 'expense' CHECK (kind IN ('expense', 'income', 'cogs')),
+        budget     REAL NOT NULL DEFAULT 0,
+        recurring  INTEGER NOT NULL DEFAULT 0,
+        benchmark  REAL,
+        sort       INTEGER NOT NULL DEFAULT 0,
+        active     INTEGER NOT NULL DEFAULT 1
+      );
+
+      -- Month-end review: who confirmed every expected expense was entered.
+      CREATE TABLE month_closes (
+        period     TEXT PRIMARY KEY,
+        closed_by  INTEGER REFERENCES users(id),
+        closed_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        notes      TEXT
+      );
+
+      -- Which salesperson commission plan a sold deal was paid under.
+      ALTER TABLE deals ADD COLUMN commission_plan TEXT;
+
+      -- Website listing details.
+      ALTER TABLE inventory ADD COLUMN listing TEXT NOT NULL DEFAULT 'stock';
+      ALTER TABLE inventory ADD COLUMN web_description TEXT;
+      ALTER TABLE inventory ADD COLUMN featured INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE inventory ADD COLUMN show_on_website INTEGER NOT NULL DEFAULT 1;
+    `);
+    const add = db.prepare(
+      'INSERT OR IGNORE INTO expense_accounts (key, name, kind, budget, recurring, benchmark, sort) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    DEFAULT_ACCOUNTS.forEach((a, i) => add.run(a[0], a[1], a[2], a[3], a[4], a[5], i));
+    // Any category already used on a payment keeps working.
+    for (const { category } of db.prepare('SELECT DISTINCT category FROM expenses').all()) {
+      add.run(category, category, 'expense', 0, 0, null, 999);
+    }
+    db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('commission_scale', ?)").run(JSON.stringify(DEFAULT_COMMISSION_SCALE));
+  },
 ];
 
 function migrate(db) {
@@ -549,6 +621,17 @@ function migrate(db) {
       db.pragma(`user_version = ${v + 1}`);
     })();
   }
+}
+
+function expenseAccounts(db, { activeOnly = false } = {}) {
+  return db
+    .prepare(`SELECT * FROM expense_accounts ${activeOnly ? 'WHERE active = 1' : ''} ORDER BY kind = 'cogs' DESC, kind = 'income', sort, name`)
+    .all();
+}
+
+// { key: name } for every account, for labels and validation.
+function expenseCategories(db) {
+  return Object.fromEntries(expenseAccounts(db).map((a) => [a.key, a.name]));
 }
 
 function getSettings(db) {
@@ -578,6 +661,9 @@ module.exports = {
   defaultDbPath,
   MIGRATIONS,
   getSettings,
+  expenseAccounts,
+  expenseCategories,
+  DEFAULT_COMMISSION_SCALE,
   ROLES,
   INVENTORY_STATUSES,
   HOME_TYPES,
@@ -592,8 +678,6 @@ module.exports = {
   JOB_CATEGORIES,
   APPLICATION_STATUSES,
   DOCUMENT_TYPES,
-  EXPENSE_CATEGORIES,
   EXPENSE_METHODS,
-  NON_OVERHEAD,
   DEFAULT_SETTINGS,
 };

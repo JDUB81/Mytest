@@ -12,7 +12,7 @@
 // Ledger entries are never edited. Each sync compares what *should* have been posted
 // with what *was* posted and records only the difference, so every change is traceable.
 
-const { NON_OVERHEAD, getSettings } = require('./db');
+const { getSettings, DEFAULT_COMMISSION_SCALE } = require('./db');
 const { loadDealBundle, round2, today } = require('./deals');
 
 const usd = (n) =>
@@ -70,22 +70,51 @@ function userRate(db, user) {
   return user.commission_rate ?? defaultRate(db, user.commission_plan);
 }
 
+// --- Jon Wayne per-deal pay scale ---------------------------------------------------
+
+function commissionScale(db) {
+  try {
+    return { ...DEFAULT_COMMISSION_SCALE, ...JSON.parse(getSettings(db).commission_scale || '{}') };
+  } catch {
+    return DEFAULT_COMMISSION_SCALE;
+  }
+}
+
+// Singles (and tiny/park models) use the single-wide scale; everything else the multi.
+const sectionsFor = (home) => (/single|tiny|park/i.test((home && home.home_type) || '') ? 'single' : 'double');
+
+// Rate for a deal's net profit: the highest tier the profit reaches, applied to the whole deal.
+function scaleRate(scale, sections, profit) {
+  const tiers = [...(scale[sections] || [])].sort((a, b) => a[0] - b[0]);
+  let rate = 0;
+  for (const [from, pct] of tiers) if (profit >= from) rate = pct;
+  return rate;
+}
+
+function scaleCommission(scale, sections, profit) {
+  if (profit <= 0) return { rate: 0, amount: 0 };
+  const rate = scaleRate(scale, sections, profit);
+  return { rate, amount: round2((rate / 100) * profit) };
+}
+
 // Who earns commission on a deal and at what rate. Snapshotted the first time the deal
 // is sold (or when the salesperson changes) so later rate changes don't rewrite history.
 function dealCommissionSnapshot(db, deal) {
   if (deal.commission_user_id === deal.salesperson_id && deal.commission_user_id) {
-    return { userId: deal.commission_user_id, rate: deal.commission_rate };
+    return { userId: deal.commission_user_id, rate: deal.commission_rate, plan: deal.commission_plan || 'sales' };
   }
   const user = deal.salesperson_id
     ? db.prepare('SELECT * FROM users WHERE id = ?').get(deal.salesperson_id)
     : null;
-  const rate = user && user.commission_plan === 'sales' ? userRate(db, user) : null;
-  db.prepare('UPDATE deals SET commission_user_id = ?, commission_rate = ? WHERE id = ?').run(
+  const plan = user && ['sales', 'scale'].includes(user.commission_plan) ? user.commission_plan : null;
+  const rate = plan === 'sales' ? userRate(db, user) : null;
+  db.prepare('UPDATE deals SET commission_user_id = ?, commission_rate = ?, commission_plan = ? WHERE id = ?').run(
     user ? user.id : null,
     rate,
+    plan,
     deal.id
   );
-  return { userId: user ? user.id : null, rate };
+  return { userId: user ? user.id : null, rate, plan };
 }
 
 // Everything the books need to know about one deal.
@@ -95,12 +124,30 @@ function dealFinancials(db, dealId) {
   const { deal, items, totals } = bundle;
   const jobs = jobCosts(db, deal, items);
   const actualProfit = round2(totals.grossProfit - jobs.overrun);
+  const sections = sectionsFor(bundle.home);
+  const scale = commissionScale(db);
+  const minProfit = sections === 'single' ? scale.min_single : scale.min_double;
+  const belowMinimum = totals.grossProfit < minProfit;
   let commission = null;
   if (deal.status === 'sold') {
     const snap = dealCommissionSnapshot(db, deal);
-    if (snap.userId && snap.rate) {
+    if (snap.userId && snap.plan === 'scale') {
+      // Scale is paid on the deal's profit; job overruns lower the profit and can drop the tier.
+      const planned = scaleCommission(scale, sections, totals.grossProfit);
+      const actual = scaleCommission(scale, sections, actualProfit);
       commission = {
         userId: snap.userId,
+        plan: 'scale',
+        rate: planned.rate,
+        actualRate: actual.rate,
+        earned: planned.amount,
+        overrun: round2(actual.amount - planned.amount),
+      };
+      commission.net = round2(commission.earned + commission.overrun);
+    } else if (snap.userId && snap.rate) {
+      commission = {
+        userId: snap.userId,
+        plan: 'sales',
         rate: snap.rate,
         earned: round2((snap.rate / 100) * totals.grossProfit),
         overrun: round2(-(snap.rate / 100) * jobs.overrun),
@@ -108,7 +155,7 @@ function dealFinancials(db, dealId) {
       commission.net = round2(commission.earned + commission.overrun);
     }
   }
-  return { ...bundle, jobs, actualProfit, commission };
+  return { ...bundle, jobs, actualProfit, commission, sections, minProfit, belowMinimum };
 }
 
 const insertEntry = (db, e) =>
@@ -150,7 +197,9 @@ function syncDealCommission(db, dealId, actorId = null) {
     } else if (!want) {
       note = `Deal #${deal.id} — job cost charge-back reversed`;
     } else {
-      note = `Deal #${deal.id} job costs ${usd(jobs.overrun)} over allotment — ${commission.rate}% charged back`;
+      note = commission.plan === 'scale'
+        ? `Deal #${deal.id} job costs ${usd(jobs.overrun)} over allotment — commission recalculated on ${usd(fin.actualProfit)} profit at ${commission.actualRate}%`
+        : `Deal #${deal.id} job costs ${usd(jobs.overrun)} over allotment — ${commission.rate}% charged back`;
     }
     insertEntry(db, {
       user_id: Number(userId),
@@ -175,14 +224,18 @@ function monthProfit(db, period) {
   const grossProfit = round2(deals.reduce((s, f) => s + f.totals.grossProfit, 0));
   const overruns = round2(deals.reduce((s, f) => s + f.jobs.overrun, 0));
   const salesCommissions = round2(deals.reduce((s, f) => s + (f.commission ? f.commission.net : 0), 0));
+  // Overhead = expense accounts; income accounts (manufacturer reimbursements, tires & axles…)
+  // offset it. 'cogs' accounts are already inside deal profit or the commission ledger.
   const overheadRows = db
     .prepare(`
-      SELECT category, SUM(amount) AS total FROM expenses
-      WHERE voided_at IS NULL AND deal_id IS NULL AND strftime('%Y-%m', paid_on) = ?
-        AND category NOT IN (${NON_OVERHEAD.map(() => '?').join(',')})
-      GROUP BY category ORDER BY total DESC
+      SELECT e.category, COALESCE(a.kind, 'expense') AS kind,
+        SUM(CASE WHEN COALESCE(a.kind, 'expense') = 'income' THEN -e.amount ELSE e.amount END) AS total
+      FROM expenses e LEFT JOIN expense_accounts a ON a.key = e.category
+      WHERE e.voided_at IS NULL AND e.deal_id IS NULL AND strftime('%Y-%m', e.paid_on) = ?
+        AND COALESCE(a.kind, 'expense') != 'cogs'
+      GROUP BY e.category ORDER BY total DESC
     `)
-    .all(period, ...NON_OVERHEAD);
+    .all(period);
   const overhead = round2(overheadRows.reduce((s, r) => s + r.total, 0));
   return {
     period,
@@ -318,6 +371,9 @@ module.exports = {
   dealFinancials,
   syncDealCommission,
   syncGmCommissions,
+  commissionScale,
+  scaleCommission,
+  sectionsFor,
   backfillDealCommissions,
   monthProfit,
   monthsBetween,

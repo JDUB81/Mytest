@@ -18,7 +18,7 @@ function parseCommission(body, existing = {}) {
   return {
     error,
     commission_plan: plan,
-    commission_rate: plan === 'none' ? null : rate.value,
+    commission_rate: plan === 'none' || plan === 'scale' ? null : rate.value,
     commission_since: plan === 'none' ? null : since.value || (changedPlan ? today() : existing.commission_since || today()),
   };
 }
@@ -58,7 +58,7 @@ module.exports = function userRoutes(db) {
   router.get('/new', (req, res) => {
     res.render('users/new', {
       title: 'New staff account',
-      values: { role: 'sales', commission_plan: 'sales' },
+      values: { role: 'sales', commission_plan: 'scale' },
       error: null,
       defaults: defaults(),
     });

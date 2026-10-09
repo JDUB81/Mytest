@@ -16,7 +16,7 @@
         <td><%= u.full_name %></td>
         <td><%= u.username %></td>
         <td><span class="role-badge role-<%= u.role %>"><%= ROLES[u.role] %></span></td>
-        <td class="small"><% if (u.commission_plan === 'none') { %>—<% } else { %><%= u.commission_plan === 'gm' ? 'GM' : 'Sales' %> · <%= u.commission_rate ?? defaults[u.commission_plan] %>%<% } %></td>
+        <td class="small"><% if (u.commission_plan === 'none') { %>—<% } else { %><%= u.commission_plan === 'scale' ? 'Jon Wayne scale' : (u.commission_plan === 'gm' ? 'GM' : 'Sales') + ' · ' + (u.commission_rate ?? defaults[u.commission_plan]) + '%' %><% } %></td>
         <td><%= u.active ? 'Active' : 'Disabled' %></td>
         <td><%= formatDate(u.created_at) %></td>
         <td><a href="/users/<%= u.id %>/edit">Edit</a></td>

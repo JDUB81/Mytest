@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<p class="crumb"><a href="/books/expenses">Expenses</a> /</p>
+<div class="page-head">
+  <h1>Enter expenses — <%= monthLabel %></h1>
+  <div class="actions"><a class="btn" href="/books/close?month=<%= month %>">Month-close checklist</a></div>
+</div>
+<% if (closed) { %><div class="flash flash-error"><%= monthLabel %> was closed by <%= closed.full_name %> on <%= formatDate(closed.closed_at) %>. Anything added now will be logged.</div><% } %>
+<p class="muted">Type the amount for each bill paid this month. Leave blank anything that didn't apply. ↻ marks expenses expected every month, which the month-close checklist will flag if missing. For checks you need to print, use <a href="/books/checks/new">Write a check</a> instead.</p>
+
+<form method="get" action="/books/expenses/enter" class="filters">
+  <label class="inline-label">Month <input type="month" name="month" value="<%= month %>"></label>
+  <button class="btn" type="submit">Go</button>
+</form>
+
+<form method="post" action="/books/expenses/enter" class="card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="month" value="<%= month %>">
+  <div class="grid-3">
+    <label>Date paid <input type="date" name="paid_on" value="<%= defaultDate %>"></label>
+    <label>Paid by
+      <select name="method"><% Object.keys(EXPENSE_METHODS).forEach(function (k) { %><option value="<%= k %>" <%= k === 'ach' ? 'selected' : '' %>><%= EXPENSE_METHODS[k] %></option><% }) %></select>
+    </label>
+  </div>
+  <div class="table-wrap">
+  <table class="compact enter-table">
+    <thead><tr><th>Account</th><th class="num">Budget</th><th class="num">Already entered</th><th>Amount ($)</th><th>Paid to</th><th>Ref / check #</th><th>Memo</th></tr></thead>
+    <tbody>
+    <% var section = null; accounts.forEach(function (a) { var done = entered[a.key];
+         if (a.kind !== section) { section = a.kind; %>
+      <tr class="section-row"><td colspan="7"><%= a.kind === 'income' ? 'Income & reimbursements received' : 'Operating expenses' %></td></tr>
+    <% } %>
+      <tr class="<%= a.recurring && !done ? 'needs-entry' : '' %>">
+        <td><%= a.name %><% if (a.recurring) { %> <span class="small muted">↻</span><% } %></td>
+        <td class="num small"><%= a.budget ? formatMoney(a.budget) : '—' %></td>
+        <td class="num small"><%= done ? formatMoney(done.total) + ' (' + done.n + ')' : (a.recurring ? 'missing' : '—') %></td>
+        <td><input name="amount_<%= a.key %>" inputmode="decimal" class="short"></td>
+        <td><input name="payee_<%= a.key %>" value="<%= lastPayee[a.key] || '' %>" placeholder="<%= a.name %>"></td>
+        <td><input name="ref_<%= a.key %>" class="short"></td>
+        <td><input name="memo_<%= a.key %>"></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+  <div class="actions"><button class="btn primary" type="submit">Save expenses</button> <a href="/books/expenses">Cancel</a></div>
+</form>
+<%- include('../partials/footer') %>

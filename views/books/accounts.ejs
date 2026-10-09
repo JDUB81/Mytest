@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1>Books</h1></div>
+<%- include('_nav') %>
+<p class="muted">Monthly budgets start from your startup model ("Dealership Model – High Volume vs High Margin") and, where it had none, the Hartsville store budget. ↻ Recurring = expected every month; the month-close checklist flags it if nothing is entered.</p>
+<form method="post" action="/books/accounts" class="card inline-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <strong>New account</strong>
+  <input name="name" placeholder="e.g. Security monitoring" required>
+  <select name="kind"><option value="expense">Expense</option><option value="income">Income / credit</option></select>
+  <input name="budget" inputmode="decimal" placeholder="Monthly budget" class="short">
+  <label class="check small"><input type="checkbox" name="recurring" value="1"> Recurring</label>
+  <button class="btn" type="submit">Add</button>
+</form>
+<div class="card">
+  <% var section = null; accounts.forEach(function (a) { if (a.kind !== section) { section = a.kind; %>
+    <h2 class="form-section"><%= a.kind === 'income' ? 'Income & reimbursements' : a.kind === 'cogs' ? 'Deal & inventory costs (not overhead)' : 'Operating expenses' %></h2>
+  <% } %>
+    <form method="post" action="/books/accounts/<%= a.key %>" class="inline-form account-row <%= a.active ? '' : 'inactive-row' %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input name="name" value="<%= a.name %>" aria-label="Name">
+      <label class="inline-label small">Budget $ <input name="budget" inputmode="decimal" value="<%= a.budget || '' %>" class="short" <%= a.kind === 'cogs' ? 'disabled' : '' %>></label>
+      <label class="check small"><input type="checkbox" name="recurring" value="1" <%= a.recurring ? 'checked' : '' %> <%= a.kind === 'cogs' ? 'disabled' : '' %>> ↻ Recurring</label>
+      <select name="active" aria-label="Status"><option value="1" <%= a.active ? 'selected' : '' %>>Active</option><option value="0" <%= a.active ? '' : 'selected' %>>Hidden</option></select>
+      <span class="small muted"><%= a.benchmark ? "Hartsville '23 avg " + formatMoney(a.benchmark) : '' %></span>
+      <button class="btn" type="submit">Save</button>
+    </form>
+  <% }) %>
+</div>
+<%- include('../partials/footer') %>

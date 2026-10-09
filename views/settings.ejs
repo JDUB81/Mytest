@@ -33,6 +33,29 @@
   </fieldset>
   <div class="actions"><button class="btn primary" type="submit">Save settings</button></div>
 </form>
+<form method="post" action="/settings/scale" class="card" id="scale">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2>Salesman pay scale (Jon Wayne)</h2>
+  <p class="small muted">The rate is set by the deal's net profit and applies to the whole deal (not just the part above each step). Used for staff on the "Jon Wayne pay scale" plan.</p>
+  <div class="grid-2">
+    <% [['single', 'Single-wide'], ['double', 'Double-wide / multi-section']].forEach(function (t) { var rows = scale[t[0]] || []; %>
+      <div>
+        <h3><%= t[1] %></h3>
+        <table class="compact scale-table">
+          <thead><tr><th>Deal profit from ($)</th><th>Rate (%)</th></tr></thead>
+          <tbody>
+          <% for (var i = 0; i < 6; i++) { var r = rows[i] || []; %>
+            <tr><td><input name="<%= t[0] %>_from_<%= i %>" inputmode="decimal" value="<%= r[0] ?? '' %>"></td><td><input name="<%= t[0] %>_rate_<%= i %>" inputmode="decimal" value="<%= r[1] ?? '' %>"></td></tr>
+          <% } %>
+          </tbody>
+        </table>
+        <label class="inline-label">Minimum profit without manager approval ($) <input name="min_<%= t[0] %>" inputmode="decimal" value="<%= t[0] === 'single' ? scale.min_single : scale.min_double %>" class="short"></label>
+      </div>
+    <% }) %>
+  </div>
+  <div class="actions"><button class="btn primary" type="submit">Save pay scale</button></div>
+</form>
+
 <div class="grid-2">
 <section class="card">
   <h2>Jobs &amp; add-ons</h2>

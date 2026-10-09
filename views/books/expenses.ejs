@@ -1,0 +1,62 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Books</h1>
+  <div class="actions">
+    <a class="btn" href="/books/accounts">Edit budgets</a>
+    <a class="btn primary" href="/books/expenses/enter">+ Enter this month's expenses</a>
+  </div>
+</div>
+<%- include('_nav') %>
+
+<div class="filters">
+  <div class="tabs">
+    <% [year - 1, year, year + 1].filter(function (y) { return y <= thisYear + 0; }).forEach(function (y) { %>
+      <a class="tab <%= y === year ? 'active' : '' %>" href="/books/expenses?year=<%= y %>"><%= y %></a>
+    <% }) %>
+  </div>
+  <span class="small muted">Red = over budget · yellow = at or under budget · income lines are credits.</span>
+</div>
+
+<% var totals = {}, budgetTotal = 0, incomeTotal = {}, grand = 0; %>
+<div class="card table-wrap">
+  <table class="expense-grid">
+    <thead>
+      <tr>
+        <th>GL account</th>
+        <% monthInfo.forEach(function (m) { %>
+          <th class="num"><a href="/books/close?month=<%= m.period %>"><%= m.label %></a>
+            <div class="month-flag"><% if (m.closed) { %><span class="ok-text" title="Closed by <%= m.closed.full_name %>">✓ closed</span><% } else if (m.started && m.missing) { %><span class="overdue-text"><%= m.missing %> missing</span><% } else if (m.started) { %><span class="muted">open</span><% } %></div></th>
+        <% }) %>
+        <th class="num">Total</th><th class="num">Average</th><th class="num">Budget</th><th class="num" title="Town &amp; Country Hartsville 2023 monthly average">Hartsville '23</th>
+      </tr>
+    </thead>
+    <tbody>
+    <% var section = null; accounts.forEach(function (a) {
+         if (a.kind !== section) { section = a.kind; %>
+      <tr class="section-row"><td colspan="17"><%= a.kind === 'income' ? 'Income & reimbursements (credits)' : 'Operating expenses' %></td></tr>
+    <% } var row = grid[a.key] || {}, total = 0; %>
+      <tr class="<%= a.active ? '' : 'inactive' %>">
+        <td><%= a.name %><%= a.recurring ? '' : '' %><% if (a.recurring) { %> <span class="small muted" title="Expected every month">↻</span><% } %></td>
+        <% for (var i = 1; i <= 12; i++) { var v = row[i] || 0; total += v; var cls = v && a.budget ? (a.kind === 'income' ? (v >= a.budget ? 'under' : 'over') : (v > a.budget ? 'over' : 'under')) : ''; %>
+          <td class="num <%= cls %>"><% if (v) { %><a href="/books/register?month=<%= year %>-<%= String(i).padStart(2, '0') %>&category=<%= a.key %>"><%= formatMoney(v) %></a><% } else { %><span class="muted">—</span><% } %></td>
+          <% totals[i] = (totals[i] || 0) + (a.kind === 'income' ? -v : v); %>
+        <% } grand += a.kind === 'income' ? -total : total; budgetTotal += a.kind === 'income' ? -a.budget : a.budget; %>
+        <td class="num"><strong><%= total ? formatMoney(total) : '—' %></strong></td>
+        <td class="num"><%= total ? formatMoney(total / monthsElapsed) : '—' %></td>
+        <td class="num"><%= a.budget ? formatMoney(a.budget) : '—' %></td>
+        <td class="num muted"><%= a.benchmark ? formatMoney(a.benchmark) : '—' %></td>
+      </tr>
+    <% }) %>
+      <tr class="total">
+        <td>Net expenses</td>
+        <% for (var j = 1; j <= 12; j++) { %><td class="num"><%= totals[j] ? formatMoney(totals[j]) : '—' %></td><% } %>
+        <td class="num"><%= formatMoney(grand) %></td>
+        <td class="num"><%= formatMoney(grand / monthsElapsed) %></td>
+        <td class="num"><%= formatMoney(budgetTotal) %></td>
+        <td class="num muted"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<p class="hint">Deal job costs, home purchases and commission payouts aren't shown here; they're counted inside each deal's profit and the commission ledger. The Hartsville column is the Town &amp; Country Hartsville store's 2023 monthly average, for comparison. Click a month to review and close it.</p>
+<%- include('../partials/footer') %>

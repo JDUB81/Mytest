@@ -1,6 +1,6 @@
 const express = require('express');
 const { requireRole } = require('../auth');
-const { EXPENSE_CATEGORIES, EXPENSE_METHODS, COMMISSION_PLANS, getSettings } = require('../db');
+const { EXPENSE_METHODS, COMMISSION_PLANS, getSettings, expenseCategories, expenseAccounts } = require('../db');
 const { text, number, date, choice } = require('../format');
 const { logActivity, round2, today } = require('../deals');
 const books = require('../books');
@@ -52,7 +52,7 @@ module.exports = function bookRoutes(db) {
 
   router.get('/register', (req, res) => {
     const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : req.query.month === 'all' ? 'all' : today().slice(0, 7);
-    const category = choice(req.query.category, EXPENSE_CATEGORIES) || '';
+    const category = choice(req.query.category, expenseCategories(db)) || '';
     const vendorId = Number(req.query.vendor) || null;
     const q = text(req.query.q, 100);
     const where = [];
@@ -176,7 +176,8 @@ module.exports = function bookRoutes(db) {
     // A deal-linked payment is always a job cost against that deal.
     const dealId = Number(b.deal_id) || null;
     let dealItemId = null;
-    let category = choice(b.category, EXPENSE_CATEGORIES);
+    const categories = expenseCategories(db);
+    let category = choice(b.category, categories);
     if (dealId) {
       const deal = db.prepare("SELECT id FROM deals WHERE id = ? AND status != 'cancelled'").get(dealId);
       if (!deal) errors.push('That deal is not open.');
@@ -243,7 +244,7 @@ module.exports = function bookRoutes(db) {
         });
         books.syncDealCommission(db, dealId, req.user.id);
       } else {
-        logActivity(db, { userId: req.user.id, message: `Paid ${usd(amount.value)} to ${payeeName} (${EXPENSE_CATEGORIES[category]})` });
+        logActivity(db, { userId: req.user.id, message: `Paid ${usd(amount.value)} to ${payeeName} (${categories[category]})` });
       }
       return id;
     })();
@@ -312,6 +313,228 @@ module.exports = function bookRoutes(db) {
     })();
     req.flash('success', 'Payment voided.');
     res.redirect(`/books/checks/${e.id}`);
+  });
+
+  // --- Monthly expenses vs. budget (like the store P&L report) -----------------------
+
+  const monthsOfYear = (year) => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+  const closes = () => Object.fromEntries(db.prepare('SELECT c.*, u.full_name FROM month_closes c LEFT JOIN users u ON u.id = c.closed_by').all().map((c) => [c.period, c]));
+
+  // Recurring accounts with a budget but nothing entered for the month.
+  function missingFor(period) {
+    return db
+      .prepare(`
+        SELECT a.* FROM expense_accounts a
+        WHERE a.active = 1 AND a.recurring = 1 AND a.kind != 'cogs'
+          AND NOT EXISTS (SELECT 1 FROM expenses e WHERE e.category = a.key AND e.voided_at IS NULL AND strftime('%Y-%m', e.paid_on) = ?)
+        ORDER BY a.sort, a.name
+      `)
+      .all(period);
+  }
+
+  router.get('/expenses', (req, res) => {
+    const thisYear = Number(today().slice(0, 4));
+    const year = Number(req.query.year) || thisYear;
+    const months = monthsOfYear(year);
+    const accounts = expenseAccounts(db).filter((a) => a.kind !== 'cogs');
+    const rows = db
+      .prepare(`
+        SELECT category, strftime('%m', paid_on) AS m, SUM(amount) AS total FROM expenses
+        WHERE voided_at IS NULL AND deal_id IS NULL AND strftime('%Y', paid_on) = ?
+        GROUP BY category, m
+      `)
+      .all(String(year));
+    const grid = {};
+    for (const r of rows) (grid[r.category] ||= {})[Number(r.m)] = r.total;
+    const currentMonth = year === thisYear ? Number(today().slice(5, 7)) : year < thisYear ? 12 : 0;
+    const closed = closes();
+    const monthInfo = months.map((p, i) => ({
+      period: p,
+      label: books.monthLabel(p).split(' ')[0],
+      closed: closed[p] || null,
+      missing: i + 1 <= currentMonth ? missingFor(p).length : 0,
+      started: i + 1 <= currentMonth,
+    }));
+    const used = accounts.filter((a) => a.active || grid[a.key]);
+    res.render('books/expenses', {
+      title: 'Expenses',
+      year,
+      thisYear,
+      accounts: used,
+      grid,
+      monthInfo,
+      monthsElapsed: Math.max(1, currentMonth),
+    });
+  });
+
+  router.get('/expenses/enter', (req, res) => {
+    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : today().slice(0, 7);
+    const accounts = expenseAccounts(db, { activeOnly: true }).filter((a) => a.kind !== 'cogs');
+    const entered = Object.fromEntries(
+      db.prepare(`
+        SELECT category, SUM(amount) AS total, COUNT(*) AS n FROM expenses
+        WHERE voided_at IS NULL AND deal_id IS NULL AND strftime('%Y-%m', paid_on) = ? GROUP BY category
+      `).all(month).map((r) => [r.category, r])
+    );
+    // Suggest last time's payee for each account.
+    const lastPayee = Object.fromEntries(
+      db.prepare(`
+        SELECT category, payee_name FROM expenses e WHERE voided_at IS NULL AND id = (
+          SELECT MAX(id) FROM expenses x WHERE x.category = e.category AND x.voided_at IS NULL)
+      `).all().map((r) => [r.category, r.payee_name])
+    );
+    const [y, m] = month.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const defaultDate = month === today().slice(0, 7) ? today() : `${month}-${String(lastDay).padStart(2, '0')}`;
+    res.render('books/expenses-enter', {
+      title: `Enter expenses — ${books.monthLabel(month)}`,
+      month,
+      monthLabel: books.monthLabel(month),
+      accounts,
+      entered,
+      lastPayee,
+      defaultDate,
+      closed: closes()[month] || null,
+    });
+  });
+
+  router.post('/expenses/enter', (req, res) => {
+    const month = /^\d{4}-\d{2}$/.test(req.body.month || '') ? req.body.month : today().slice(0, 7);
+    const paidOn = date(req.body.paid_on).value || today();
+    const method = choice(req.body.method, EXPENSE_METHODS) || 'other';
+    const accounts = expenseAccounts(db, { activeOnly: true }).filter((a) => a.kind !== 'cogs');
+    const errors = [];
+    const entries = [];
+    for (const a of accounts) {
+      const raw = req.body[`amount_${a.key}`];
+      if (raw === undefined || String(raw).trim() === '') continue;
+      const amount = number(raw, MONEY);
+      if (amount.error || !amount.value) {
+        errors.push(`${a.name}: amount is not valid.`);
+        continue;
+      }
+      entries.push({
+        paid_on: paidOn,
+        amount: round2(amount.value),
+        method,
+        check_number: text(req.body[`ref_${a.key}`], 30),
+        vendor_id: null,
+        payee_user_id: null,
+        payee_name: text(req.body[`payee_${a.key}`], 120) || a.name,
+        category: a.key,
+        memo: text(req.body[`memo_${a.key}`], 300),
+        deal_id: null,
+        deal_item_id: null,
+        inventory_id: null,
+        created_by: req.user.id,
+      });
+    }
+    if (errors.length) {
+      req.flash('error', errors.join(' '));
+      return res.redirect(`/books/expenses/enter?month=${month}`);
+    }
+    if (!entries.length) {
+      req.flash('error', 'Enter at least one amount.');
+      return res.redirect(`/books/expenses/enter?month=${month}`);
+    }
+    db.transaction(() => {
+      for (const e of entries) insertExpense.run(e);
+      const total = round2(entries.reduce((s, e) => s + e.amount, 0));
+      logActivity(db, { userId: req.user.id, message: `Entered ${entries.length} expense line${entries.length === 1 ? '' : 's'} for ${books.monthLabel(month)} (${usd(total)})` });
+    })();
+    const missing = missingFor(paidOn.slice(0, 7)).length;
+    req.flash('success', `${entries.length} line${entries.length === 1 ? '' : 's'} recorded.${missing ? ` ${missing} recurring expense${missing === 1 ? ' is' : 's are'} still missing for this month.` : ' Every recurring expense is in for this month.'}`);
+    res.redirect(`/books/close?month=${paidOn.slice(0, 7)}`);
+  });
+
+  router.get('/close', (req, res) => {
+    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : books.previousMonth(today().slice(0, 7));
+    const accounts = expenseAccounts(db, { activeOnly: true }).filter((a) => a.kind !== 'cogs');
+    const totals = Object.fromEntries(
+      db.prepare(`
+        SELECT category, SUM(amount) AS total, COUNT(*) AS n FROM expenses
+        WHERE voided_at IS NULL AND deal_id IS NULL AND strftime('%Y-%m', paid_on) = ? GROUP BY category
+      `).all(month).map((r) => [r.category, r])
+    );
+    const pendingDeals = db.prepare(`
+      SELECT COUNT(*) AS n FROM deals WHERE status = 'sold' AND strftime('%Y-%m', sold_at, 'localtime') = ?
+        AND id IN (SELECT deal_id FROM deal_items di WHERE NOT EXISTS (SELECT 1 FROM expenses e WHERE e.deal_item_id = di.id AND e.voided_at IS NULL) AND COALESCE(di.cost, 0) > 0)
+    `).get(month).n;
+    res.render('books/close', {
+      title: `Close ${books.monthLabel(month)}`,
+      month,
+      monthLabel: books.monthLabel(month),
+      prev: books.previousMonth(month),
+      next: (() => { const [y, m] = month.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; })(),
+      accounts,
+      totals,
+      missing: missingFor(month),
+      closed: closes()[month] || null,
+      profit: books.monthProfit(db, month),
+      unpaidJobDeals: pendingDeals,
+    });
+  });
+
+  router.post('/close', (req, res) => {
+    const month = /^\d{4}-\d{2}$/.test(req.body.month || '') ? req.body.month : null;
+    if (!month) return res.redirect('/books/close');
+    if (req.body.action === 'reopen') {
+      db.prepare('DELETE FROM month_closes WHERE period = ?').run(month);
+      logActivity(db, { userId: req.user.id, message: `Reopened ${books.monthLabel(month)} books` });
+      req.flash('success', `${books.monthLabel(month)} reopened.`);
+      return res.redirect(`/books/close?month=${month}`);
+    }
+    const missing = missingFor(month);
+    if (missing.length && req.body.confirm_missing !== '1') {
+      req.flash('error', `${missing.length} recurring expense${missing.length === 1 ? ' is' : 's are'} missing. Enter them, or tick the box to confirm they don't apply this month.`);
+      return res.redirect(`/books/close?month=${month}`);
+    }
+    db.prepare('INSERT OR REPLACE INTO month_closes (period, closed_by, notes) VALUES (?, ?, ?)').run(month, req.user.id, text(req.body.notes, 1000));
+    logActivity(db, { userId: req.user.id, message: `Closed ${books.monthLabel(month)} books${missing.length ? ` (${missing.length} recurring item${missing.length === 1 ? '' : 's'} confirmed not applicable)` : ''}` });
+    req.flash('success', `${books.monthLabel(month)} is closed.`);
+    res.redirect(`/books/expenses?year=${month.slice(0, 4)}`);
+  });
+
+  // --- Chart of accounts and budgets --------------------------------------------------
+
+  router.get('/accounts', (req, res) => {
+    res.render('books/accounts', { title: 'Expense accounts & budgets', accounts: expenseAccounts(db) });
+  });
+
+  router.post('/accounts', (req, res) => {
+    const name = text(req.body.name, 120);
+    const kind = ['expense', 'income'].includes(req.body.kind) ? req.body.kind : 'expense';
+    const budget = number(req.body.budget, { max: 10000000 });
+    if (!name || budget.error) {
+      req.flash('error', 'Enter a name and a valid monthly budget.');
+      return res.redirect('/books/accounts');
+    }
+    let key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'account';
+    while (db.prepare('SELECT 1 FROM expense_accounts WHERE key = ?').get(key)) key += '_2';
+    db.prepare('INSERT INTO expense_accounts (key, name, kind, budget, recurring, sort) VALUES (?, ?, ?, ?, ?, 500)').run(
+      key, name, kind, budget.value ?? 0, req.body.recurring === '1' ? 1 : 0
+    );
+    req.flash('success', `${name} added.`);
+    res.redirect('/books/accounts');
+  });
+
+  router.post('/accounts/:key', (req, res) => {
+    const acct = db.prepare('SELECT * FROM expense_accounts WHERE key = ?').get(req.params.key);
+    if (!acct) return res.redirect('/books/accounts');
+    const budget = number(req.body.budget, { max: 10000000 });
+    if (budget.error) {
+      req.flash('error', 'Budget must be a number.');
+      return res.redirect('/books/accounts');
+    }
+    db.prepare('UPDATE expense_accounts SET name = ?, budget = ?, recurring = ?, active = ? WHERE key = ?').run(
+      text(req.body.name, 120) || acct.name,
+      budget.value ?? 0,
+      req.body.recurring === '1' ? 1 : 0,
+      req.body.active === '0' ? 0 : 1,
+      acct.key
+    );
+    req.flash('success', `${text(req.body.name, 120) || acct.name} updated.`);
+    res.redirect('/books/accounts');
   });
 
   // --- Vendors ------------------------------------------------------------------
