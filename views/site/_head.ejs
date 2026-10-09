@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= page === 'home' ? site.business_name + ' · Manufactured homes for sale' : title + ' · ' + site.business_name %></title>
+  <meta name="description" content="<%= site.site_tagline %>">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/site/site.css">
+</head>
+<body>
+<div class="site-top">
+  <div class="wrap">
+    <span><%= site.site_hours %></span>
+    <span>
+      <% if (site.business_phone) { %>Call or text <a href="tel:<%= site.business_phone.replace(/[^\d+]/g, '') %>"><%= site.business_phone %></a><% } else { %><a href="/contact">Contact us</a><% } %>
+    </span>
+  </div>
+</div>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/<%= user ? '?preview=1' : '' %>">
+      <span class="logo-mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c8932f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg></span>
+      <span class="logo-text"><%= site.business_name %><small>Manufactured homes</small></span>
+    </a>
+    <button class="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.setAttribute('aria-expanded',n.classList.contains('open'))">☰</button>
+    <nav class="site-nav" id="site-nav">
+      <a href="/homes" class="<%= page === 'homes' ? 'active' : '' %>">Homes</a>
+      <a href="/financing" class="<%= page === 'financing' ? 'active' : '' %>">Financing</a>
+      <a href="/about" class="<%= page === 'about' ? 'active' : '' %>">About</a>
+      <a href="/contact" class="<%= page === 'contact' ? 'active' : '' %>">Contact</a>
+      <a class="btn btn-gold" href="/financing">Get pre-qualified</a>
+    </nav>
+  </div>
+</header>

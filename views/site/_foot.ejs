@@ -1,0 +1,35 @@
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h4><%= site.business_name %></h4>
+        <p><%= site.site_tagline %></p>
+        <% if (site.business_address) { %><p class="prose"><%= site.business_address %></p><% } %>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="/homes">All homes</a></li>
+          <li><a href="/homes?listing=stock">On our lot now</a></li>
+          <li><a href="/homes?listing=order">Build to order</a></li>
+          <li><a href="/financing">Financing &amp; pre-qualification</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Visit or call</h4>
+        <ul>
+          <% if (site.business_phone) { %><li><a href="tel:<%= site.business_phone.replace(/[^\d+]/g, '') %>"><%= site.business_phone %></a></li><% } %>
+          <% if (site.business_email) { %><li><a href="mailto:<%= site.business_email %>"><%= site.business_email %></a></li><% } %>
+          <li><%= site.site_hours %></li>
+          <li><a href="/contact">Send us a message</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© <%= new Date().getFullYear() %> <%= site.business_name %>. Prices, payments and availability are subject to change. Payment and budget estimates are not a loan offer or approval.</span>
+      <a href="/login">Staff sign in</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

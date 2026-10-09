@@ -1,0 +1,30 @@
+<%- include('_head') %>
+<section class="page-hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/">Home</a> / About</div>
+    <h1>About <%= site.business_name %></h1>
+    <p class="lead"><%= site.site_tagline %></p>
+  </div>
+</section>
+<section class="section">
+  <div class="wrap two-col">
+    <div>
+      <p class="prose" style="font-size:1.1rem"><%= site.site_about %></p>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.5rem">
+        <a class="btn btn-navy" href="/homes">See our homes</a>
+        <a class="btn btn-ghost" href="/contact">Visit us</a>
+      </div>
+    </div>
+    <img src="/site/hero.svg" alt="" style="border-radius:12px;box-shadow:var(--shadow)">
+  </div>
+</section>
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="steps">
+      <div class="step"><h3>New homes</h3><p>Single-wide and double-wide homes on our lot, plus factory models built to order.</p></div>
+      <div class="step"><h3>Financing help</h3><p>We help you apply and compare lenders that specialize in manufactured homes.</p></div>
+      <div class="step"><h3>Turn-key service</h3><p>Delivery, setup, skirting, HVAC, decks and utility hookups, coordinated by us.</p></div>
+    </div>
+  </div>
+</section>
+<%- include('_foot') %>

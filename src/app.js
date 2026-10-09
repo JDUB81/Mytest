@@ -94,6 +94,7 @@ function createApp(db, options = {}) {
     res.type('text').send('ok');
   });
 
+  app.use(require('./routes/site')(db, { uploadDir }));
   app.use(require('./routes/auth')(db));
   app.use(requireLogin);
   app.use(require('./routes/dashboard')(db));

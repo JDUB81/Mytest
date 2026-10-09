@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe9f2"/><stop offset="1" stop-color="#f3f6f9"/></linearGradient></defs>
+  <rect width="400" height="250" fill="url(#s)"/>
+  <rect y="190" width="400" height="60" fill="#c9dbb8"/>
+  <path d="M40 100 L200 58 L360 100 Z" fill="#3d4a58"/>
+  <rect x="50" y="100" width="300" height="88" fill="#f4f1ea" stroke="#d8d1c3"/>
+  <g fill="#9cbbd6" stroke="#fff" stroke-width="3"><rect x="72" y="118" width="40" height="36"/><rect x="124" y="118" width="40" height="36"/><rect x="236" y="118" width="40" height="36"/><rect x="288" y="118" width="40" height="36"/></g>
+  <rect x="183" y="122" width="34" height="66" fill="#2f4f6f"/>
+  <rect x="50" y="186" width="300" height="8" fill="#a89e8f"/>
+  <text x="200" y="232" font-family="system-ui,sans-serif" font-size="14" fill="#5f6b78" text-anchor="middle">Photos coming soon</text>
+</svg>

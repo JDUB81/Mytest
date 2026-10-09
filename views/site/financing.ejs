@@ -1,0 +1,72 @@
+<%- include('_head') %>
+<section class="page-hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/">Home</a> / Financing</div>
+    <h1><%= result ? 'Thanks, ' + result.name + '!' : 'Financing & pre-qualification' %></h1>
+    <p class="lead"><%= result ? 'Here’s an estimate based on what you told us. A member of our team will reach out to go over your options.' : 'Tell us a little about your income and budget and we’ll estimate the price range that fits. It takes about two minutes and does not check your credit.' %></p>
+  </div>
+</section>
+<section class="section" style="padding-top:2.5rem">
+  <div class="wrap">
+  <% if (result) { %>
+    <div class="two-col">
+      <div class="form-card">
+        <% if (result.estimate) { %>
+          <p class="eyebrow">Estimated home budget</p>
+          <p class="result-figure">Up to about <%= formatMoney(result.estimate) %></p>
+          <p class="muted small">This is an estimate from typical manufactured-home lending guidelines and your down payment. It is not a loan offer or approval; the lender decides after reviewing your full application and credit.</p>
+        <% } else { %>
+          <p class="eyebrow">Let’s talk</p>
+          <h2>We’ll find a path that works</h2>
+          <p class="muted">Based on the numbers entered we couldn’t estimate a budget online, but there are often options: a co-buyer, a larger down payment, land equity, or paying down a debt. We’ll call you to go over them.</p>
+        <% } %>
+        <a class="btn btn-gold" href="/homes<%= result.estimate ? '?max_price=' + result.estimate : '' %>">See homes in my range</a>
+      </div>
+      <div>
+        <% if (result.fits.length) { %>
+          <h2>Homes that may fit</h2>
+          <div class="home-grid"><% result.fits.forEach(function (h) { %><%- include('_card', { h: h }) %><% }) %></div>
+        <% } else { %>
+          <h2>What happens next</h2>
+          <ol><li>We review what you sent.</li><li>We call you to talk about homes and lenders.</li><li>When you’re ready, we help you complete the full credit application.</li></ol>
+        <% } %>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="two-col">
+      <form method="post" action="/financing" class="form-card">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+        <%- include('_errors') %>
+        <div class="form-grid">
+          <label>First name <input name="first_name" value="<%= values.first_name || '' %>" required autocomplete="given-name"></label>
+          <label>Last name <input name="last_name" value="<%= values.last_name || '' %>" required autocomplete="family-name"></label>
+          <label>Phone <input name="phone" type="tel" value="<%= values.phone || '' %>" autocomplete="tel"></label>
+          <label>Email <input name="email" type="email" value="<%= values.email || '' %>" autocomplete="email"></label>
+          <label>Household income per month <span class="hint">Before taxes, all buyers combined</span><input name="monthly_income" inputmode="decimal" value="<%= values.monthly_income || '' %>" placeholder="$4,500" required></label>
+          <label>Other income per month <span class="hint">SSI, retirement, child support…</span><input name="other_income" inputmode="decimal" value="<%= values.other_income || '' %>" placeholder="$0"></label>
+          <label>Monthly payments you make <span class="hint">Car, credit cards, loans (not rent)</span><input name="monthly_debts" inputmode="decimal" value="<%= values.monthly_debts || '' %>" placeholder="$450"></label>
+          <label>Down payment available <span class="hint">Cash or land equity</span><input name="down_payment" inputmode="decimal" value="<%= values.down_payment || '' %>" placeholder="$10,000"></label>
+          <label>Where will the home go?
+            <select name="land_status"><option value="">Not sure yet</option><% Object.keys(LAND_STATUSES).forEach(function (k) { %><option value="<%= k %>" <%= values.land_status === k ? 'selected' : '' %>><%= LAND_STATUSES[k] %></option><% }) %></select></label>
+          <label>Bedrooms wanted
+            <select name="bedrooms"><option value="">Any</option><% [2,3,4,5].forEach(function (b) { %><option value="<%= b %>" <%= Number(values.bedrooms) === b ? 'selected' : '' %>><%= b %>+</option><% }) %></select></label>
+          <label class="full">Anything else we should know? <textarea name="message" rows="3"><%= values.message || '' %></textarea></label>
+        </div>
+        <button class="btn btn-gold btn-block" type="submit">See my estimate</button>
+        <p class="small muted" style="margin:.8rem 0 0">No credit check. By sending this you agree we may contact you about homes and financing.</p>
+      </form>
+      <div>
+        <h2>Financing made simple</h2>
+        <ul class="info-list">
+          <li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><div><strong>Home-only (chattel) loans</strong><br><span class="muted">For homes placed on a rented lot, family land or land you own.</span></div></li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><div><strong>Land-home packages</strong><br><span class="muted">Finance the home and land together, with your land often counting toward the down payment.</span></div></li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><div><strong>Options for many credit histories</strong><br><span class="muted">First-time buyers and buyers rebuilding credit are welcome to apply.</span></div></li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><div><strong>One application, several lenders</strong><br><span class="muted">We help you complete the application and send it to the lenders that fit your situation.</span></div></li>
+        </ul>
+      </div>
+    </div>
+  <% } %>
+  </div>
+</section>
+<%- include('_foot') %>

@@ -1,0 +1,68 @@
+<%- include('_head') %>
+<section class="page-hero" style="padding-bottom:1.5rem">
+  <div class="wrap">
+    <div class="crumbs"><a href="/">Home</a> / <a href="/homes">Homes</a> / <%= home.model %></div>
+    <h1><%= home.model %></h1>
+    <p class="muted"><%= home.year || '' %> <%= home.manufacturer %> · <%= home.home_type %> · <%= home.listing === 'order' ? 'Build to order' : 'On our lot now' %></p>
+  </div>
+</section>
+<section class="section" style="padding-top:2rem">
+  <div class="wrap detail">
+    <div>
+      <div class="gallery-main">
+        <% if (photos.length) { %>
+          <img id="main-photo" src="/media/<%= photos[0].id %>" alt="<%= home.model %>">
+        <% } else { %>
+          <img src="/site/<%= /double|triple|modular/i.test(home.home_type) ? 'house-double' : 'house-single' %>.svg" alt="">
+        <% } %>
+      </div>
+      <% if (photos.length > 1) { %>
+        <div class="thumbs">
+          <% photos.forEach(function (p, i) { %>
+            <button type="button" class="<%= i === 0 ? 'active' : '' %>" data-src="/media/<%= p.id %>" aria-label="Photo <%= i + 1 %>"><img src="/media/<%= p.id %>" alt="" loading="lazy"></button>
+          <% }) %>
+        </div>
+        <script>
+          document.querySelectorAll('.thumbs button').forEach(function (b) {
+            b.addEventListener('click', function () {
+              document.getElementById('main-photo').src = b.dataset.src;
+              document.querySelectorAll('.thumbs button').forEach(function (x) { x.classList.toggle('active', x === b); });
+            });
+          });
+        </script>
+      <% } %>
+
+      <div class="spec-grid">
+        <% if (home.bedrooms) { %><div><strong><%= home.bedrooms %></strong><span>Bedrooms</span></div><% } %>
+        <% if (home.bathrooms) { %><div><strong><%= home.bathrooms %></strong><span>Bathrooms</span></div><% } %>
+        <% if (home.square_feet) { %><div><strong><%= home.square_feet.toLocaleString() %></strong><span>Square feet</span></div><% } %>
+        <% if (home.width_ft && home.length_ft) { %><div><strong><%= home.width_ft %>' × <%= home.length_ft %>'</strong><span>Size</span></div><% } %>
+        <% if (home.year) { %><div><strong><%= home.year %></strong><span>Year</span></div><% } %>
+      </div>
+
+      <% if (home.web_description) { %><h2>About this home</h2><p class="prose"><%= home.web_description %></p><% } %>
+      <% if (home.features) { %><h3>Features &amp; options</h3><p class="prose"><%= home.features %></p><% } %>
+      <% if (home.exterior_color) { %><p><strong>Exterior:</strong> <%= home.exterior_color %></p><% } %>
+      <% if (home.listing === 'order') { %>
+        <p class="muted">This is a build-to-order model: we order it from the factory with your choice of colors and options. Ask us about current build times and floor plan options.</p>
+      <% } %>
+    </div>
+    <aside class="side-card">
+      <% if (showPrices && home.price) { %>
+        <p class="price"><%= formatMoney(home.price) %></p>
+        <p class="small muted">Plus tax. Ask us about delivery and setup.</p>
+        <% if (estimate) { %>
+          <div class="estimate">Estimated payment <strong><%= formatMoney(estimate.payment) %>/mo</strong><br>
+            <span class="small">with 10% down at <%= estimate.rate %>% for <%= estimate.years %> years. Your rate depends on credit and lender approval.</span></div>
+        <% } %>
+      <% } else { %>
+        <p class="price" style="font-size:1.4rem">Call for today’s price</p>
+      <% } %>
+      <a class="btn btn-navy btn-block" href="/financing">Get pre-qualified</a>
+      <% if (site.business_phone) { %><p class="center" style="margin:.8rem 0 1.2rem"><a href="tel:<%= site.business_phone.replace(/[^\d+]/g, '') %>">or call <%= site.business_phone %></a></p><% } else { %><br><% } %>
+      <h3 style="font-size:1.1rem">Ask about this home</h3>
+      <%- include('_lead-form', { home: home, values: values }) %>
+    </aside>
+  </div>
+</section>
+<%- include('_foot') %>

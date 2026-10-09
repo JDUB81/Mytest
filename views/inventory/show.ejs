@@ -2,9 +2,9 @@
 <div class="page-head">
   <div>
     <p class="crumb"><a href="/inventory">Inventory</a> /</p>
-    <h1>Stock #<%= home.stock_number %> <span class="status status-<%= home.status %>"><%= statusLabel(home.status) %></span></h1>
+    <h1>Stock #<%= home.stock_number %> <span class="status status-<%= home.status %>"><%= statusLabel(home.status) %></span><% if (home.listing === 'order') { %> <span class="tag">Build to order</span><% } %></h1>
     <p class="muted"><%= home.year || '' %> <%= home.manufacturer %> <%= home.model %> · <%= home.home_type %>
-      <% var days = daysSince(home.arrival_date || home.created_at); if (home.status === 'available' && days !== null) { %> · <span class="<%= days > 90 ? 'aging' : '' %>"><%= days %> days on lot</span><% } %></p>
+      <% var days = daysSince(home.arrival_date || home.created_at); if (home.status === 'available' && home.listing !== 'order' && days !== null) { %> · <span class="<%= days > 90 ? 'aging' : '' %>"><%= days %> days on lot</span><% } %></p>
   </div>
   <div class="actions">
     <% if (isManager) { %><a class="btn" href="/inventory/<%= home.id %>/edit">Edit</a><% } %>
@@ -55,8 +55,10 @@
       <dt>Exterior</dt><dd><%= home.exterior_color || '—' %></dd>
       <dt>Serial / VIN</dt><dd><%= home.serial_number || '—' %></dd>
       <dt>Lot location</dt><dd><%= home.location || '—' %></dd>
-      <dt>Arrived</dt><dd><%= formatDate(home.arrival_date || home.created_at) %></dd>
+      <dt><%= home.listing === 'order' ? 'Added' : 'Arrived' %></dt><dd><%= formatDate(home.arrival_date || home.created_at) %></dd>
+      <dt>Website</dt><dd><% if (home.show_on_website && home.status === 'available') { %><a href="/homes/<%= home.id %>" target="_blank" rel="noopener">Listed</a><%= home.featured ? ' · featured on home page' : '' %><% } else { %><span class="muted"><%= home.show_on_website ? 'Hidden while ' + statusLabel(home.status).toLowerCase() : 'Not listed' %></span><% } %></dd>
     </dl>
+    <% if (home.web_description) { %><h3>Website description</h3><p class="notes"><%= home.web_description %></p><% } %>
     <% if (home.features) { %><h3>Features &amp; options</h3><p class="notes"><%= home.features %></p><% } %>
     <% if (home.notes) { %><h3>Internal notes</h3><p class="notes"><%= home.notes %></p><% } %>
   </section>

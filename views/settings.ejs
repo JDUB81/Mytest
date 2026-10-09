@@ -13,6 +13,17 @@
     <label>Address <textarea name="business_address" rows="2"><%= values.business_address %></textarea></label>
   </fieldset>
   <fieldset>
+    <legend>Public website</legend>
+    <label>Tagline (home page headline text) <input name="site_tagline" value="<%= values.site_tagline %>"></label>
+    <div class="grid-2">
+      <label>Hours <input name="site_hours" value="<%= values.site_hours %>"></label>
+      <label>Service area <input name="site_service_area" value="<%= values.site_service_area %>"></label>
+    </div>
+    <label>About us <textarea name="site_about" rows="3"><%= values.site_about %></textarea></label>
+    <label class="check"><input type="checkbox" name="site_show_prices" value="1" <%= values.site_show_prices ? 'checked' : '' %>> Show prices on the website</label>
+    <p class="hint">Choose which homes appear, write their descriptions and pick featured homes on each home's Edit page. <a href="/?preview=1" target="_blank" rel="noopener">View the website</a></p>
+  </fieldset>
+  <fieldset>
     <legend>Deal defaults</legend>
     <div class="grid-3">
       <label>Default sales tax rate (%) <input name="default_tax_rate" inputmode="decimal" value="<%= values.default_tax_rate %>"></label>

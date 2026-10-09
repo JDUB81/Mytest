@@ -348,13 +348,25 @@ module.exports = function bookRoutes(db) {
     for (const r of rows) (grid[r.category] ||= {})[Number(r.m)] = r.total;
     const currentMonth = year === thisYear ? Number(today().slice(5, 7)) : year < thisYear ? 12 : 0;
     const closed = closes();
-    const monthInfo = months.map((p, i) => ({
-      period: p,
-      label: books.monthLabel(p).split(' ')[0],
-      closed: closed[p] || null,
-      missing: i + 1 <= currentMonth ? missingFor(p).length : 0,
-      started: i + 1 <= currentMonth,
-    }));
+    // Months before the first overhead entry or close are before the books began: don't flag them.
+    const booksStart = db.prepare(`
+      SELECT MIN(p) AS p FROM (
+        SELECT MIN(strftime('%Y-%m', paid_on)) AS p FROM expenses WHERE voided_at IS NULL AND deal_id IS NULL
+        UNION ALL SELECT MIN(period) FROM month_closes)
+    `).get().p || today().slice(0, 7);
+    const monthInfo = months.map((p, i) => {
+      const started = i + 1 <= currentMonth && p >= booksStart;
+      // The current month is still in progress, so it isn't flagged as missing anything yet.
+      const current = p === today().slice(0, 7);
+      return {
+        period: p,
+        label: books.monthLabel(p).split(' ')[0],
+        closed: closed[p] || null,
+        missing: started && !current ? missingFor(p).length : 0,
+        started,
+      };
+    });
+    const startedCount = monthInfo.filter((m) => m.started).length;
     const used = accounts.filter((a) => a.active || grid[a.key]);
     res.render('books/expenses', {
       title: 'Expenses',
@@ -363,7 +375,7 @@ module.exports = function bookRoutes(db) {
       accounts: used,
       grid,
       monthInfo,
-      monthsElapsed: Math.max(1, currentMonth),
+      monthsElapsed: Math.max(1, startedCount),
     });
   });
 

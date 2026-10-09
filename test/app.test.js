@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 
 test('unauthenticated users are sent to the login page', async () => {
-  for (const url of ['/', '/inventory', '/customers', '/deals', '/tasks', '/reports', '/photos/1']) {
+  for (const url of ['/inventory', '/customers', '/deals', '/tasks', '/reports', '/photos/1']) {
     const res = await request(app).get(url);
     assert.strictEqual(res.status, 302, url);
     assert.strictEqual(res.headers.location, '/login', url);

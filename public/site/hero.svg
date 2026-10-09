@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6d9a8"/><stop offset=".55" stop-color="#fbeedb"/><stop offset="1" stop-color="#eef3e6"/>
+    </linearGradient>
+    <linearGradient id="hill1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb27a"/><stop offset="1" stop-color="#6e9a5c"/></linearGradient>
+    <linearGradient id="hill2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c693"/><stop offset="1" stop-color="#8db379"/></linearGradient>
+    <linearGradient id="siding" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f1ea"/><stop offset="1" stop-color="#e3ddd0"/></linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d4a58"/><stop offset="1" stop-color="#2a3440"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bcd6ea"/><stop offset="1" stop-color="#7fa6c4"/></linearGradient>
+    <pattern id="lap" width="8" height="14" patternUnits="userSpaceOnUse"><rect width="8" height="14" fill="none"/><line x1="0" y1="13.5" x2="8" y2="13.5" stroke="#d2cabb" stroke-width="1"/></pattern>
+  </defs>
+  <rect width="1200" height="640" fill="url(#sky)"/>
+  <circle cx="930" cy="150" r="70" fill="#fff4d6" opacity=".9"/>
+  <g fill="#fff" opacity=".8">
+    <ellipse cx="220" cy="120" rx="80" ry="18"/><ellipse cx="270" cy="108" rx="50" ry="16"/>
+    <ellipse cx="640" cy="80" rx="90" ry="16"/><ellipse cx="700" cy="70" rx="46" ry="14"/>
+  </g>
+  <path d="M0 420 C 200 360 380 380 560 400 S 900 350 1200 390 L1200 640 L0 640Z" fill="url(#hill2)"/>
+  <!-- tree line -->
+  <g fill="#5b7f4c">
+    <circle cx="70" cy="395" r="42"/><circle cx="120" cy="380" r="50"/><circle cx="175" cy="398" r="38"/>
+    <circle cx="1040" cy="372" r="46"/><circle cx="1095" cy="360" r="56"/><circle cx="1150" cy="378" r="44"/>
+  </g>
+  <g fill="#4a6b3e">
+    <rect x="115" y="410" width="10" height="40"/><rect x="1092" y="395" width="10" height="45"/>
+  </g>
+  <!-- the home: 32' double-wide with a front porch -->
+  <g transform="translate(560 318) scale(.92)">
+    <ellipse cx="300" cy="215" rx="360" ry="18" fill="#000" opacity=".12"/>
+    <path d="M-20 70 L300 0 L620 70 Z" fill="url(#roof)"/>
+    <path d="M-20 70 L300 0 L620 70" fill="none" stroke="#1d252e" stroke-width="4"/>
+    <rect x="0" y="70" width="600" height="135" fill="url(#siding)"/>
+    <rect x="0" y="70" width="600" height="135" fill="url(#lap)"/>
+    <path d="M230 70 L300 26 L370 70 Z" fill="#e8e2d6" stroke="#cfc6b6" stroke-width="2"/>
+    <rect x="0" y="198" width="600" height="14" fill="#a89e8f"/>
+    <!-- windows -->
+    <g stroke="#fff" stroke-width="5">
+      <rect x="40" y="100" width="70" height="62" fill="url(#glass)"/>
+      <rect x="140" y="100" width="70" height="62" fill="url(#glass)"/>
+      <rect x="400" y="100" width="70" height="62" fill="url(#glass)"/>
+      <rect x="500" y="100" width="70" height="62" fill="url(#glass)"/>
+    </g>
+    <g fill="#2f4f6f"><rect x="28" y="98" width="10" height="66"/><rect x="112" y="98" width="10" height="66"/><rect x="128" y="98" width="10" height="66"/><rect x="212" y="98" width="10" height="66"/>
+      <rect x="388" y="98" width="10" height="66"/><rect x="472" y="98" width="10" height="66"/><rect x="488" y="98" width="10" height="66"/><rect x="572" y="98" width="10" height="66"/></g>
+    <!-- porch -->
+    <path d="M218 76 L382 76 L398 92 L202 92 Z" fill="#2a3440"/>
+    <rect x="270" y="104" width="60" height="98" fill="#2f4f6f"/>
+    <rect x="280" y="114" width="40" height="34" fill="url(#glass)"/>
+    <circle cx="320" cy="156" r="3" fill="#c8932f"/>
+    <g fill="#fff"><rect x="214" y="92" width="10" height="112"/><rect x="376" y="92" width="10" height="112"/></g>
+    <rect x="206" y="200" width="188" height="10" fill="#b08a5a"/>
+    <rect x="236" y="210" width="128" height="8" fill="#9c784c"/>
+    <rect x="252" y="218" width="96" height="8" fill="#8a6a42"/>
+    <!-- shrubs -->
+    <g fill="#5f8a4e"><circle cx="30" cy="205" r="18"/><circle cx="60" cy="210" r="14"/><circle cx="560" cy="206" r="17"/><circle cx="590" cy="210" r="13"/><circle cx="180" cy="208" r="14"/><circle cx="420" cy="208" r="14"/></g>
+  </g>
+  <path d="M0 520 C 260 480 520 500 760 515 S 1050 500 1200 510 L1200 640 L0 640Z" fill="url(#hill1)"/>
+  <path d="M820 526 C 850 560 830 600 780 640 L940 640 C 910 600 900 560 900 526 Z" fill="#d9cdb4" opacity=".9"/>
+</svg>

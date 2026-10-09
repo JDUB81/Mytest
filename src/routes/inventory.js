@@ -8,6 +8,7 @@ const { INVENTORY_STATUSES, HOME_TYPES, getSettings } = require('../db');
 const { text, number, date } = require('../format');
 const { logActivity } = require('../deals');
 const { syncDealCommission } = require('../books');
+const { CATALOGS, catalogHomes } = require('../catalog');
 
 const managerOnly = requireRole('manager');
 
@@ -45,6 +46,10 @@ function parseHome(body) {
     exterior_color: text(body.exterior_color, 100),
     features: text(body.features, 4000),
     notes: text(body.notes, 2000),
+    web_description: text(body.web_description, 2000),
+    listing: body.listing === 'order' ? 'order' : 'stock',
+    featured: body.featured ? 1 : 0,
+    show_on_website: body.show_on_website ? 1 : 0,
   };
   const errors = [];
   if (!values.stock_number) errors.push('Stock number is required.');
@@ -91,10 +96,10 @@ module.exports = function inventoryRoutes(db, { uploadDir }) {
   const insertHome = db.prepare(`
     INSERT INTO inventory (stock_number, manufacturer, model, year, home_type, serial_number, bedrooms,
       bathrooms, square_feet, width_ft, length_ft, price, location, notes, exterior_color, features,
-      arrival_date, invoice_cost, freight_cost, other_cost, created_by)
+      arrival_date, invoice_cost, freight_cost, other_cost, web_description, listing, featured, show_on_website, created_by)
     VALUES (@stock_number, @manufacturer, @model, @year, @home_type, @serial_number, @bedrooms,
       @bathrooms, @square_feet, @width_ft, @length_ft, @price, @location, @notes, @exterior_color, @features,
-      @arrival_date, @invoice_cost, @freight_cost, @other_cost, @created_by)
+      @arrival_date, @invoice_cost, @freight_cost, @other_cost, @web_description, @listing, @featured, @show_on_website, @created_by)
   `);
   const updateHome = db.prepare(`
     UPDATE inventory SET stock_number = @stock_number, manufacturer = @manufacturer, model = @model,
@@ -102,7 +107,8 @@ module.exports = function inventoryRoutes(db, { uploadDir }) {
       bathrooms = @bathrooms, square_feet = @square_feet, width_ft = @width_ft, length_ft = @length_ft,
       price = @price, location = @location, notes = @notes, exterior_color = @exterior_color,
       features = @features, arrival_date = @arrival_date, invoice_cost = @invoice_cost,
-      freight_cost = @freight_cost, other_cost = @other_cost, updated_at = datetime('now')
+      freight_cost = @freight_cost, other_cost = @other_cost, web_description = @web_description,
+      listing = @listing, featured = @featured, show_on_website = @show_on_website, updated_at = datetime('now')
     WHERE id = @id
   `);
   const stockTaken = db.prepare('SELECT id FROM inventory WHERE stock_number = ? AND id != ?');
@@ -188,6 +194,10 @@ module.exports = function inventoryRoutes(db, { uploadDir }) {
       where.push('i.bedrooms >= @beds');
       params.beds = beds;
     }
+    if (req.query.listing === 'order' || req.query.listing === 'stock') {
+      where.push('i.listing = @listing');
+      params.listing = req.query.listing;
+    }
     if (maxPrice) {
       where.push('i.price <= @maxPrice');
       params.maxPrice = maxPrice;
@@ -208,7 +218,8 @@ module.exports = function inventoryRoutes(db, { uploadDir }) {
       homes,
       totalValue,
       status,
-      filters: { q: q || '', type, beds: beds || '', max_price: maxPrice || '', sort },
+      filters: { q: q || '', type, beds: beds || '', max_price: maxPrice || '', sort, listing: ['order', 'stock'].includes(req.query.listing) ? req.query.listing : '' },
+      catalogs: Object.values(CATALOGS),
     });
   });
 
@@ -259,8 +270,33 @@ module.exports = function inventoryRoutes(db, { uploadDir }) {
     res.redirect(`/deals/${dealId}`);
   });
 
+  // Load a factory price list as build-to-order homes. Models already loaded are skipped.
+  router.post('/import-catalog', managerOnly, (req, res) => {
+    const catalog = CATALOGS[req.body.catalog];
+    if (!catalog) {
+      req.flash('error', 'Choose a factory price list to load.');
+      return res.redirect('/inventory');
+    }
+    let added = 0;
+    db.transaction(() => {
+      for (const home of catalogHomes(catalog)) {
+        if (stockTaken.get(home.stock_number, 0)) continue;
+        insertHome.run({
+          serial_number: null, location: 'Factory order', exterior_color: null, features: null,
+          arrival_date: null, show_on_website: 1, created_by: req.user.id, ...home,
+        });
+        added++;
+      }
+    })();
+    if (added) logActivity(db, { userId: req.user.id, message: `Loaded ${added} factory models from ${catalog.label}` });
+    req.flash('success', added
+      ? `${added} factory model${added === 1 ? '' : 's'} added as build-to-order homes, priced at the High Volume price. Upload photos and floor plans on each home.`
+      : 'Every model from that price list is already in inventory.');
+    res.redirect('/inventory?listing=order');
+  });
+
   router.get('/new', managerOnly, (req, res) => {
-    res.render('inventory/form', { title: 'Add inventory', home: {}, errors: [] });
+    res.render('inventory/form', { title: 'Add inventory', home: { show_on_website: 1 }, errors: [] });
   });
 
   router.post('/', managerOnly, (req, res) => {

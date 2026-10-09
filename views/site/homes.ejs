@@ -1,0 +1,33 @@
+<%- include('_head') %>
+<section class="page-hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/">Home</a> / Homes</div>
+    <h1>Homes for sale</h1>
+    <p class="lead">Homes on our lot are ready for delivery. Build-to-order models are built for you with your choice of colors and options.</p>
+  </div>
+</section>
+<section class="section" style="padding-top:2.5rem">
+  <div class="wrap">
+    <form method="get" action="/homes" class="filter-bar">
+      <label>Type <select name="type"><option value="">Any type</option><% HOME_TYPES.forEach(function (t) { %><option <%= filters.type === t ? 'selected' : '' %>><%= t %></option><% }) %></select></label>
+      <label>Bedrooms <select name="beds"><option value="">Any</option><% [2,3,4,5].forEach(function (b) { %><option value="<%= b %>" <%= Number(filters.beds) === b ? 'selected' : '' %>><%= b %>+</option><% }) %></select></label>
+      <label>Max price <select name="max_price"><option value="">No limit</option><% [80000,100000,125000,150000,175000,200000].forEach(function (p) { %><option value="<%= p %>" <%= Number(filters.max_price) === p ? 'selected' : '' %>><%= formatMoney(p) %></option><% }) %></select></label>
+      <label>Availability <select name="listing"><option value="">All</option><option value="stock" <%= filters.listing === 'stock' ? 'selected' : '' %>>On our lot now</option><option value="order" <%= filters.listing === 'order' ? 'selected' : '' %>>Build to order</option></select></label>
+      <label>Sort <select name="sort">
+        <option value="featured" <%= filters.sort === 'featured' ? 'selected' : '' %>>Featured</option>
+        <option value="price_low" <%= filters.sort === 'price_low' ? 'selected' : '' %>>Price: low to high</option>
+        <option value="price_high" <%= filters.sort === 'price_high' ? 'selected' : '' %>>Price: high to low</option>
+        <option value="newest" <%= filters.sort === 'newest' ? 'selected' : '' %>>Newest</option>
+      </select></label>
+      <button class="btn btn-navy" type="submit">Update</button>
+    </form>
+    <p class="muted"><%= homes.length %> home<%= homes.length === 1 ? '' : 's' %></p>
+    <% if (homes.length) { %>
+      <div class="home-grid"><% homes.forEach(function (h) { %><%- include('_card', { h: h }) %><% }) %></div>
+      <% if (showPrices) { %><p class="small muted" style="margin-top:1rem">* Estimated payment with 10% down; your rate and terms depend on credit and lender approval. Prices exclude tax, delivery and setup unless noted.</p><% } %>
+    <% } else { %>
+      <div class="empty"><h3>No homes match those choices</h3><p class="muted">Try fewer filters, or tell us what you want and we’ll find it.</p><a class="btn btn-gold" href="/contact">Tell us what you need</a></div>
+    <% } %>
+  </div>
+</section>
+<%- include('_foot') %>

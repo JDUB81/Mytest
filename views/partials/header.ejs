@@ -31,6 +31,7 @@
   </form>
   <div class="account">
     <span class="who"><%= user.full_name %> <span class="role-badge role-<%= user.role %>"><%= ROLES[user.role] %></span></span>
+    <a href="/?preview=1" target="_blank" rel="noopener">Website</a>
     <a href="/account/password">Password</a>
     <form method="post" action="/logout" class="inline">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">

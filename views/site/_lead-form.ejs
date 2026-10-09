@@ -1,0 +1,15 @@
+<form method="post" action="/inquire" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (typeof home !== 'undefined' && home) { %><input type="hidden" name="home_id" value="<%= home.id %>"><% } %>
+  <div class="hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+  <div class="form-grid">
+    <label>First name <input name="first_name" value="<%= values.first_name || '' %>" required autocomplete="given-name"></label>
+    <label>Last name <input name="last_name" value="<%= values.last_name || '' %>" required autocomplete="family-name"></label>
+    <label>Phone <input name="phone" type="tel" value="<%= values.phone || '' %>" autocomplete="tel"></label>
+    <label>Email <input name="email" type="email" value="<%= values.email || '' %>" autocomplete="email"></label>
+    <label class="full">Message
+      <textarea name="message" rows="4" placeholder="<%= typeof home !== 'undefined' && home ? 'I’d like to know more about this home…' : 'What are you looking for? Bedrooms, budget, where it will go…' %>"><%= values.message || '' %></textarea></label>
+  </div>
+  <button class="btn btn-gold btn-block" type="submit"><%= typeof home !== 'undefined' && home ? 'Ask about this home' : 'Send message' %></button>
+  <p class="small muted" style="margin:.8rem 0 0">We’ll get back to you as soon as we can.</p>
+</form>

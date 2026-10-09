@@ -4,6 +4,16 @@
   <div class="actions">
     <% if (isManager) { %>
       <a class="btn" href="/reports/export/inventory.csv">Export CSV</a>
+      <details class="inline-menu">
+        <summary class="btn">Load factory models</summary>
+        <form method="post" action="/inventory/import-catalog" class="card menu-card">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% catalogs.forEach(function (c) { %>
+            <p class="small"><strong><%= c.label %></strong><br><%= c.models.length %> models, added as build-to-order homes at the High Volume price. Models already loaded are skipped.</p>
+            <button class="btn primary" name="catalog" value="<%= c.key %>">Load <%= c.models.length %> models</button>
+          <% }) %>
+        </form>
+      </details>
       <a class="btn primary" href="/inventory/new">+ Add inventory</a>
     <% } %>
   </div>
@@ -28,6 +38,11 @@
     <% [1,2,3,4,5].forEach(function (b) { %><option value="<%= b %>" <%= Number(filters.beds) === b ? 'selected' : '' %>><%= b %>+ beds</option><% }) %>
   </select>
   <input type="text" name="max_price" value="<%= filters.max_price %>" placeholder="Max price" inputmode="numeric" class="short">
+  <select name="listing" aria-label="Listing">
+    <option value="">Lot &amp; order</option>
+    <option value="stock" <%= filters.listing === 'stock' ? 'selected' : '' %>>On the lot</option>
+    <option value="order" <%= filters.listing === 'order' ? 'selected' : '' %>>Build to order</option>
+  </select>
   <select name="sort" aria-label="Sort">
     <option value="newest" <%= filters.sort === 'newest' ? 'selected' : '' %>>Newest first</option>
     <option value="oldest" <%= filters.sort === 'oldest' ? 'selected' : '' %>>Longest on lot</option>
@@ -36,7 +51,7 @@
     <option value="stock" <%= filters.sort === 'stock' ? 'selected' : '' %>>Stock #</option>
   </select>
   <button class="btn" type="submit">Filter</button>
-  <% if (filters.q || filters.type || filters.beds || filters.max_price) { %><a href="/inventory?status=<%= status %>">Clear</a><% } %>
+  <% if (filters.q || filters.type || filters.beds || filters.max_price || filters.listing) { %><a href="/inventory?status=<%= status %>">Clear</a><% } %>
 </form>
 
 <% if (!homes.length) { %>
@@ -60,8 +75,8 @@
           <td><%= h.bedrooms ?? '—' %> / <%= h.bathrooms ?? '—' %></td>
           <td><%= h.square_feet ? h.square_feet.toLocaleString() : '—' %></td>
           <td class="num"><%= formatMoney(h.price) %></td>
-          <td><span class="status status-<%= h.status %>"><%= statusLabel(h.status) %></span></td>
-          <td class="small"><% var days = daysSince(h.arrival_date || h.created_at); %><% if (h.status === 'available' && days !== null) { %><span class="<%= days > 90 ? 'aging' : '' %>"><%= days %>d</span><% } else { %>—<% } %></td>
+          <td><span class="status status-<%= h.status %>"><%= statusLabel(h.status) %></span><% if (h.listing === 'order') { %> <span class="tag">Order</span><% } %></td>
+          <td class="small"><% var days = daysSince(h.arrival_date || h.created_at); %><% if (h.status === 'available' && h.listing !== 'order' && days !== null) { %><span class="<%= days > 90 ? 'aging' : '' %>"><%= days %>d</span><% } else { %>—<% } %></td>
           <td><% if (h.customer_id) { %><a href="/customers/<%= h.customer_id %>"><%= h.first_name %> <%= h.last_name %></a><% } else if (h.status === 'available') { %><a href="/inventory/<%= h.id %>#assign">Assign…</a><% } %></td>
         </tr>
       <% }) %>

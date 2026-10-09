@@ -8,6 +8,7 @@ const { openDatabase } = require('../src/db');
 const { hashPassword } = require('../src/auth');
 const { today } = require('../src/deals');
 const { syncDealCommission, syncGmCommissions, insertEntry } = require('../src/books');
+const { catalogHomes, CAVCO_MOULTRIE_2026 } = require('../src/catalog');
 
 function seedDemo(file) {
   if (path.basename(file) === 'premier-homes.db') {
@@ -44,7 +45,7 @@ function seedDemo(file) {
     setting.run('sales_commission_percent', '25');
     setting.run('gm_commission_percent', '35');
     setting.run('next_check_number', '2001');
-    db.prepare("UPDATE users SET commission_plan = 'sales', commission_since = ? WHERE role = 'sales'").run(today(-120));
+    db.prepare("UPDATE users SET commission_plan = 'scale', commission_since = ? WHERE role = 'sales'").run(today(-120));
     db.prepare("UPDATE users SET commission_plan = 'gm', commission_since = ? WHERE id = ?").run(today(-120), mgr);
 
     // Sample prices on the standard jobs list (the list itself comes from the database setup).
@@ -83,6 +84,19 @@ function seedDemo(file) {
         serial: `TX${100200 + i * 17}AB`, arrival: today(-h[17]), created: ago(h[17]),
       }).lastInsertRowid;
     });
+
+    // Website: feature a few lot homes, then load the Destiny / Cavco factory models as build-to-order homes.
+    const feature = db.prepare('UPDATE inventory SET featured = 1, web_description = ? WHERE stock_number = ?');
+    feature.run('A roomy 3-bedroom, 2-bath double-wide with a kitchen island, walk-in shower and vaulted ceilings throughout.', 'PH-1001');
+    feature.run('Our largest home: 4 bedrooms, 3 baths, a fireplace, bonus room and a farmhouse kitchen.', 'PH-1003');
+    feature.run('An open, bright single-wide with 3 bedrooms and a big pantry. A great first home.', 'PH-1004');
+    const orderHome = db.prepare(`
+      INSERT INTO inventory (stock_number, manufacturer, model, year, home_type, bedrooms, bathrooms, width_ft, length_ft,
+        price, invoice_cost, freight_cost, other_cost, location, listing, featured, web_description, notes, created_by)
+      VALUES (@stock_number, @manufacturer, @model, @year, @home_type, @bedrooms, @bathrooms, @width_ft, @length_ft,
+        @price, @invoice_cost, @freight_cost, @other_cost, 'Factory order', @listing, @featured, @web_description, @notes, ${mgr})
+    `);
+    for (const h of catalogHomes(CAVCO_MOULTRIE_2026)) orderHome.run(h);
 
     const cust = db.prepare(`
       INSERT INTO customers (first_name, last_name, phone, email, address, city, state, zip, lead_status, lead_source,
@@ -206,12 +220,30 @@ function seedDemo(file) {
     job(1, 4250, v.hvac, 'Adams', 'Heat pump', '3-ton heat pump install (extra line set)');
     job(1, 1800, v.deck, 'Adams', 'Deck', 'Treated deck');
     job(3, 2100, v.setup, 'Rivera', 'Delivery & setup — double-wide', 'Deposit on setup');
-    for (const [days, amount, payee, cat, memo] of [
-      [58, 2500, 'Oakline Properties', 'rent', 'Lot lease'], [28, 2500, 'Oakline Properties', 'rent', 'Lot lease'],
-      [50, 410.22, 'SWEPCO', 'utilities', 'Office power'], [20, 388.9, 'SWEPCO', 'utilities', 'Office power'],
-      [45, 650, 'Tyler Morning Telegraph', 'advertising', 'Weekend ad'], [15, 1200, 'Facebook Ads', 'advertising', 'Lead ads'],
-      [35, 320, 'Office Depot', 'office', 'Printer, paper'],
-    ]) overhead(days, amount, payee, cat, memo);
+    // Overhead for the last two full months, near each account's budget (a little over or under).
+    const monthEnd = (back) => {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - back + 1);
+      d.setDate(0);
+      return d.toISOString().slice(0, 10);
+    };
+    const payees = { rent: 'Oakline Properties', utilities: 'Duke Energy', advertising: 'Facebook Ads', payroll: 'Payroll', insurance: 'Southern Insurance', software: 'Software subscriptions' };
+    const insertOverhead = db.prepare(`
+      INSERT INTO expenses (paid_on, amount, method, check_number, payee_name, category, memo, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const back of [2, 1]) {
+      const day = monthEnd(back);
+      let i = 0;
+      for (const a of db.prepare("SELECT * FROM expense_accounts WHERE kind = 'expense' AND recurring = 1 AND budget > 0").all()) {
+        if (back === 1 && a.key === 'maintenance') continue; // leaves one missing for the close checklist
+        const amount = Math.round(a.budget * (0.85 + ((i++ * 7) % 30) / 100));
+        insertOverhead.run(day, amount, a.key === 'payroll' ? 'ach' : 'check', a.key === 'payroll' ? null : String(checkNo++), payees[a.key] || a.name, a.key, 'Monthly', mgr);
+      }
+      insertOverhead.run(day, 3000, 'ach', null, 'Cavco Industries', 'mfr_reimb', 'Manufacturer co-op reimbursement', mgr);
+    }
+    db.prepare('INSERT INTO month_closes (period, closed_by, notes) VALUES (?, ?, ?)').run(monthEnd(2).slice(0, 7), mgr, 'All bills in.');
     db.prepare("UPDATE settings SET value = ? WHERE key = 'next_check_number'").run(String(checkNo));
 
     // Default vendors on the jobs list.
@@ -250,6 +282,18 @@ function seedDemo(file) {
     sub.run(cids.Brooks, 'Triad Financial', today(-8), 'submitted', 88000, null, null, null, null, null, s2);
     const doc = db.prepare('INSERT INTO customer_documents (customer_id, doc_type, received_on, received_by) VALUES (?, ?, ?, ?)');
     for (const d of ['photo_id', 'co_photo_id', 'signed_app', 'land_deed']) doc.run(cids.Rivera, d, today(-5), s1);
+
+    // A lead that came in through the website's pre-qualification form.
+    const web = cust.run({
+      first: 'Taylor', last: 'Greene', stage: 'new', source: 'Website', sp: null, budget: 115000, beds: 3, land: 'owns',
+      landloc: null, fin: null, pref: null, follow: null, co: null, cophone: null, notes: null, phone: '(903) 555-0199',
+      email: 'taylor.greene@example.com', addr: null, city: null, zip: null, created: ago(0, 13),
+    }).lastInsertRowid;
+    db.prepare("INSERT INTO notes (customer_id, kind, body, created_at) VALUES (?, 'note', ?, ?)").run(web,
+      'Pre-qualification request from the website:\nHousehold income $5200/mo\nMonthly payments $350\nDown payment $8000\nLand: Owns land\nWants 3+ bedrooms\nWebsite estimate shown: about $115,000', ago(0, 13));
+    db.prepare('INSERT INTO credit_apps (customer_id, data) VALUES (?, ?)').run(web, appData({ a_first_name: 'Taylor', a_last_name: 'Greene', a_monthly_income: 5200, a_debt_other: 350, down_payment: 8000, land_type: 'Land I own' }));
+    db.prepare('INSERT INTO tasks (title, details, due_date, customer_id, assigned_to) VALUES (?, ?, ?, ?, ?)').run(
+      'Call back website lead: Taylor Greene', 'Pre-qualification request. Phone (903) 555-0199.', today(), web, mgr);
   })();
 
   // Post commissions exactly as the app would, then a commission check to Riley.

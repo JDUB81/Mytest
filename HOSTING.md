@@ -94,6 +94,8 @@ server {
 
 Health check for monitoring: `GET /healthz` returns `ok` (no login needed).
 
+The same app serves the **public website** (`/`, `/homes`, `/financing`, `/about`, `/contact`) and the staff CRM (sign in at `/login`), so a single domain such as `premierhomes.com` is enough. If you prefer, point both `www.` and `crm.` at it.
+
 ### Docker alternative
 
 A `Dockerfile` and `docker-compose.yml` are included. Data lives in the `crm-data` volume:

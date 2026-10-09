@@ -16,6 +16,16 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 
 ## Features
 
+**Public website** (what visitors see at your web address; staff signing in still get the CRM)
+- A home page with a featured homes section, a quick search, financing and "how it works" sections, and your phone, hours and address
+- Homes for sale, with filters for type, bedrooms, price and lot vs. build-to-order, and an estimated monthly payment
+- A page for each home with its photo gallery, specs, description and an "Ask about this home" form
+- Online pre-qualification: visitors enter income, payments and down payment and see an estimated budget plus homes that fit. **No credit check**, and nothing is shown that implies a loan approval
+- Every website message or pre-qualification becomes a customer (source "Website"), with a note and a call-back task for that customer's salesperson, or the first manager if they have none. Repeat visitors are matched by phone or email, so they aren't duplicated. Pre-qualification answers start the customer's credit application
+- Only homes marked **Show on website** that are still available appear. Dealer cost, internal notes, serial numbers and lot locations are never shown. Photos of sold or hidden homes are not public
+- Spam protection: a hidden bot-trap field and a limit of 5 submissions per 10 minutes per visitor
+- Edit the tagline, hours, service area, "About us" and whether prices show under **Settings → Public website**. Pick featured homes and write descriptions on each home's Edit page
+
 **Customers & leads**
 - Lead pipeline: New → Contacted → Appointment → Credit application → Approved → Under contract → Closed / Lost
 - Lead source, assigned salesperson, budget, bedrooms wanted, land situation, financing preference, co-buyer, preferred contact
@@ -27,7 +37,8 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 - Stock #, serial/VIN, make/model/year, type, beds/baths, sq ft, dimensions, colors, features, lot location, arrival date
 - Photo gallery per home
 - Dealer cost (invoice, freight, other): **managers only**
-- Filters (type, beds, max price), sorting, and days-on-lot with a warning after 90 days
+- Filters (type, beds, max price, lot vs. build-to-order), sorting, and days-on-lot with a warning after 90 days
+- **Load factory models**: one click adds the Destiny Homes / Cavco Moultrie quote (10-1-26) as 11 build-to-order homes. Each is priced at the High Volume price, with cost split into invoice, freight and fees. The High Margin and 21st Mortgage max prices are in the notes
 
 **Deals (sales pricing)**
 - Assigning a home to a customer opens a deal at the list price, using the default tax rate and doc fee
@@ -54,9 +65,20 @@ The demo uses its own database (`data/demo.db`), separate from your real one.
 - Vendors with payment history; check register filterable by month, category and payee; overhead categories (rent, utilities, advertising…)
 - Monthly profit & loss: sales, gross profit, over-budget job costs, salesperson commissions, overhead, net profit
 
+**Expenses & month close (bookkeeping)**
+- A chart of accounts that follows the Hartsville P&L: advertising, insurance, lot rent, property tax, payroll, utilities, software and more, plus income lines such as manufacturer reimbursements and tires & axles buyback. Each account has a monthly budget, and recurring accounts are flagged
+- **Enter this month's expenses** on one screen: one row per account, with payee, check # and memo
+- A year grid shows every account by month against its budget (red = over), with totals, averages and the Hartsville 2023 monthly average for comparison
+- **Month close** checklist: are all recurring bills in, and are all deal jobs paid? Then close the month. A closed month locks in the GM's commission for that month
+- The profit & loss uses these accounts: overhead = expenses − income lines
+
 **Commission ledgers**
-- Each staff member has a plan: **Salesperson** (default 25% of each deal's gross profit, earned when the deal is sold) or **General manager** (default 35% of the lot's net profit for each completed month). Rates can differ per person
-- When checks for a job go over its allotted cost, the salesperson's rate × the overrun is charged back to their balance, which comes off future commissions
+- Each staff member has a plan:
+  - **Jon Wayne pay scale** (the default for new salespeople): one rate on the whole deal's profit. Singles: 10%, 18% from $10k profit, 20% from $13k. Doubles: 10%, 18% from $10k, 20% from $20k, 25% from $30k. Deals under the minimum profit ($9,000 single / $15,000 double) are flagged for manager approval. Edit the tiers under **Settings → Pay scale**
+  - **Salesperson flat %** (default 25% of each deal's gross profit)
+  - **General manager** (default 35% of the lot's net profit for each completed month)
+  - Rates can differ per person
+- When checks for a job go over its allotted cost, the commission is recalculated on the lower profit and the difference is charged back to the salesperson's balance, which comes off future commissions
 - A general manager's closed month is recalculated if it changes later, and the difference is posted to their balance
 - Pay commissions by check from the ledger; voiding a check restores the balance. Manual adjustments need a reason
 - Salespeople see their own ledger under **My commission** (no profit figures shown)
@@ -138,7 +160,7 @@ This creates the account, or resets the password and role if the username alread
 - 5 failed sign-ins lock that username/IP for 15 minutes.
 - All forms are CSRF-protected. Login cookies are `HttpOnly` and `SameSite=Lax`.
 - Disabling an account or resetting its password signs that person out immediately.
-- Photos are only served to signed-in staff.
+- Photos are only served to signed-in staff, except photos of homes listed on the public website.
 - CSV exports neutralize spreadsheet formulas in text fields.
 
 ## Development

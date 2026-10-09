@@ -1,0 +1,22 @@
+<a class="home-card" href="/homes/<%= h.id %>">
+  <div class="photo">
+    <% if (h.photo_id) { %>
+      <img src="/media/<%= h.photo_id %>" alt="<%= h.model %>" loading="lazy">
+    <% } else { %>
+      <img src="/site/<%= /double|triple|modular/i.test(h.home_type) ? 'house-double' : 'house-single' %>.svg" alt="" loading="lazy">
+    <% } %>
+    <span class="badge <%= h.listing === 'order' ? 'order' : '' %>"><%= h.listing === 'order' ? 'Build to order' : (h.featured ? 'Featured' : 'On our lot') %></span>
+  </div>
+  <div class="body">
+    <h3><%= h.model %></h3>
+    <div class="muted small"><%= h.year || '' %> <%= h.manufacturer %> · <%= h.home_type %></div>
+    <div class="specs">
+      <% if (h.bedrooms) { %><span><strong><%= h.bedrooms %></strong> bed</span><% } %>
+      <% if (h.bathrooms) { %><span><strong><%= h.bathrooms %></strong> bath</span><% } %>
+      <% if (h.square_feet) { %><span><strong><%= h.square_feet.toLocaleString() %></strong> sq ft</span><% } else if (h.width_ft && h.length_ft) { %><span><%= h.width_ft %>' × <%= h.length_ft %>'</span><% } %>
+    </div>
+    <div class="price">
+      <% if (showPrices && h.price) { %><%= formatMoney(h.price) %><% if (h.estimate) { %> <small>· about <%= formatMoney(h.estimate.payment) %>/mo*</small><% } %><% } else { %><small>Call for price</small><% } %>
+    </div>
+  </div>
+</a>

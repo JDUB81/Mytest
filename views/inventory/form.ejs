@@ -51,6 +51,22 @@
     </div>
   </fieldset>
   <fieldset>
+    <legend>Website</legend>
+    <div class="grid-3">
+      <label>Listing
+        <select name="listing">
+          <option value="stock" <%= home.listing !== 'order' ? 'selected' : '' %>>On the lot (stock)</option>
+          <option value="order" <%= home.listing === 'order' ? 'selected' : '' %>>Build to order (factory model)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="show_on_website" value="1" <%= home.show_on_website ? 'checked' : '' %>> Show on public website</label>
+      <label class="check"><input type="checkbox" name="featured" value="1" <%= home.featured ? 'checked' : '' %>> Feature on home page</label>
+    </div>
+    <label>Website description
+      <textarea name="web_description" rows="3" placeholder="What buyers see on the website. Leave blank to show the features list."><%= home.web_description || '' %></textarea></label>
+    <p class="small muted">Dealer cost and internal notes are never shown on the website. Only homes that are available appear there.</p>
+  </fieldset>
+  <fieldset>
     <legend>Notes</legend>
     <label>Internal notes <textarea name="notes" rows="3"><%= home.notes || '' %></textarea></label>
   </fieldset>

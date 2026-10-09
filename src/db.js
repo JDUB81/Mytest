@@ -178,6 +178,13 @@ const DEFAULT_SETTINGS = {
   gm_commission_percent: '35',
   next_check_number: '1001',
   budget_insurance_monthly: '100',
+  site_tagline: 'Quality manufactured homes, honest prices, and financing for every situation.',
+  site_hours: 'Mon–Fri 9am–6pm · Sat 9am–4pm · Sun by appointment',
+  site_service_area: 'South Carolina and surrounding areas',
+  site_about:
+    'Premier Homes is a locally owned manufactured home sales center. We sell new single-wide and double-wide ' +
+    'homes, help you find financing that fits, and handle delivery, setup and finishing work so your home is ready to live in.',
+  site_show_prices: '1',
   deposit_terms:
     'Deposits hold the selected home for the buyer. Refund terms are subject to the purchase agreement.',
 };

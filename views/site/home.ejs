@@ -1,0 +1,120 @@
+<%- include('_head') %>
+<section class="hero">
+  <img class="hero-art" src="/site/hero.svg" alt="">
+  <div class="wrap">
+    <div class="hero-copy">
+      <div class="eyebrow">New manufactured homes · <%= site.site_service_area %></div>
+      <h1>A beautiful new home, without the wait or the stress.</h1>
+      <p class="lead"><%= site.site_tagline %></p>
+      <div class="actions">
+        <a class="btn btn-navy" href="/homes">Browse homes</a>
+        <a class="btn btn-ghost" href="/financing">See what you qualify for</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong><%= homeCount.n %></strong><span>homes available</span></div>
+        <% if (showPrices && homeCount.min_price) { %><div><strong><%= formatMoney(homeCount.min_price) %></strong><span>starting price</span></div><% } %>
+        <div><strong>All</strong><span>credit situations welcome</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap quick-search">
+  <form method="get" action="/homes" aria-label="Search homes">
+    <label>Home type
+      <select name="type"><option value="">Any type</option><% HOME_TYPES.forEach(function (t) { %><option><%= t %></option><% }) %></select>
+    </label>
+    <label>Bedrooms
+      <select name="beds"><option value="">Any</option><% [2,3,4,5].forEach(function (b) { %><option value="<%= b %>"><%= b %>+</option><% }) %></select>
+    </label>
+    <label>Max price
+      <select name="max_price"><option value="">No limit</option><% [80000,100000,125000,150000,175000,200000].forEach(function (p) { %><option value="<%= p %>"><%= formatMoney(p) %></option><% }) %></select>
+    </label>
+    <label>Availability
+      <select name="listing"><option value="">On the lot or to order</option><option value="stock">On our lot now</option><option value="order">Build to order</option></select>
+    </label>
+    <button class="btn btn-gold" type="submit">Find homes</button>
+  </form>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Featured homes</div>
+        <h2>Homes our customers love</h2>
+      </div>
+      <a class="btn btn-navy" href="/homes">View all homes →</a>
+    </div>
+    <% if (homes.length) { %>
+      <div class="home-grid">
+        <% homes.forEach(function (h) { %><%- include('_card', { h: h }) %><% }) %>
+      </div>
+      <% if (showPrices) { %><p class="small muted" style="margin-top:1rem">* Estimated payment with 10% down; your rate and terms depend on credit and lender approval.</p><% } %>
+    <% } else { %>
+      <div class="empty"><h3>New homes are on the way</h3><p class="muted">Call us or send a message and we’ll show you what’s coming in.</p><a class="btn btn-gold" href="/contact">Contact us</a></div>
+    <% } %>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="center" style="margin-bottom:2.5rem">
+      <div class="eyebrow">Why <%= site.business_name %></div>
+      <h2>Everything handled, start to finish</h2>
+      <p class="lead">From picking a floor plan to the day you get your keys, one team takes care of it.</p>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg></div>
+        <h3>Financing for every situation</h3>
+        <p>We work with national manufactured-home lenders, including options for first-time buyers and rebuilding credit.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M1 16V6h13v10M14 9h4l3 3v4h-7"/><circle cx="6" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg></div>
+        <h3>Delivery &amp; setup</h3>
+        <p>Delivery, setup, skirting, steps, A/C and utility hookups, coordinated by our crew so your home is move-in ready.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 20V10l7-5 7 5v10"/><path d="M9 20v-6h6v6"/></svg></div>
+        <h3>Land &amp; home packages</h3>
+        <p>Own land, buying land, or using family land? We’ll help you plan the site work and financing together.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-11a7 7 0 0 1 14 0c0 6.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+        <h3>Locally owned</h3>
+        <p>We live here too. You deal with the same people before, during and after your sale.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="center" style="margin-bottom:2.5rem">
+      <div class="eyebrow">How it works</div>
+      <h2>Three steps to your new home</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><h3>Pick your home</h3><p>Tour homes on our lot or choose a floor plan to build to order with the colors and options you want.</p></div>
+      <div class="step"><h3>Get pre-qualified</h3><p>Answer a few questions online to see an estimated budget, then we’ll match you with the right lender.</p></div>
+      <div class="step"><h3>We deliver &amp; set up</h3><p>We handle delivery, setup and finishing work, then hand you the keys.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="cta-band">
+      <div>
+        <h2>What can you afford?</h2>
+        <p>Answer a few quick questions and see an estimated home budget in under two minutes. It won’t affect your credit score.</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-gold" href="/financing">Get my estimate</a>
+        <% if (site.business_phone) { %><a class="btn btn-ghost" href="tel:<%= site.business_phone.replace(/[^\d+]/g, '') %>">Call <%= site.business_phone %></a><% } %>
+      </div>
+    </div>
+  </div>
+</section>
+<%- include('_foot') %>
